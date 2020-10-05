@@ -3,8 +3,6 @@ from . import database as db
 from werkzeug.exceptions import BadRequest
 
 app = Flask(__name__)
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0')
 
 def send_init():
     pass

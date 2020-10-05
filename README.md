@@ -5,4 +5,4 @@ Authors:
 
 Mikhail Olokin: m.olokin@innopolis.univeristy\
 Nikita Smirnov: n.smirnov@innopolis.university\
-Pavel Tishkin: p.tishkin@innopolis.university\
+Pavel Tishkin: p.tishkin@innopolis.university

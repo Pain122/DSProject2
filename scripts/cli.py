@@ -5,6 +5,12 @@ from client import Client
 client = Client('/')
 
 
+def format_filename(filename):
+    filename = click.format_filename(filename)
+    path = os.path.join(client.get_cwd(), filename)
+    return path
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def dfs(ctx):
@@ -22,7 +28,10 @@ def dfs_init():
     """
     global client
     client = Client('/')
-    msg = client.dfs_init()
+    data = {}
+    metadata = {'cmd': 'dfs_init',
+                'console_data': data}
+    msg = client.dfs_init(metadata)
     click.echo(msg)
 
 
@@ -40,9 +49,13 @@ def dfs_file_create(filename):
     Should allow to create a new empty file.
     """
     global client
-    filename = click.format_filename(filename)
-    path = os.path.join(client.get_cwd(), filename)
-    msg = client.dfs_file_create(path)
+    path = format_filename(filename)
+    data = {'filename': path}
+    metadata = {
+        'cmd': 'dfs_file_create',
+        'console_data': data
+    }
+    msg = client.dfs_file_create(metadata)
     click.echo(msg)
 
 
@@ -53,9 +66,13 @@ def dfs_file_read(filename):
     Should allow to read any file from DFS (download a file from the DFS to the Client side).
     """
     global client
-    filename = click.format_filename(filename)
-    path = os.path.join(client.get_cwd(), filename)
-    msg = client.dfs_file_read(path)
+    path = format_filename(filename)
+    data = {'filename': path}
+    metadata = {
+        'cmd': 'dfs_file_read',
+        'console_data': data
+    }
+    msg = client.dfs_file_read(metadata)
     click.echo(msg)
 
 
@@ -66,14 +83,14 @@ def dfs_file_write(filename):
     Should allow to put any file to DFS (upload a file from the Client side to the DFS)
     """
     global client
-    filename = click.format_filename(filename)
-    if os.path.exists(filename):
-        path = os.path.join(client.get_cwd(), filename)
-        size = os.path.getsize(filename)
-        msg = client.dfs_file_write(path, size)
-        click.echo(msg)
-    else:
-        click.echo(f'The file you specified doesn\'t exist: {filename}!')
+    path = format_filename(filename)
+    data = {'filename': path}
+    metadata = {
+        'cmd': 'dfs_file_write',
+        'console_data': data
+    }
+    msg = client.dfs_file_write(metadata)
+    click.echo(msg)
 
 
 @dfs_file.command(name='delete')
@@ -83,9 +100,13 @@ def dfs_file_delete(filename):
     Should allow to delete any file from DFS
     """
     global client
-    filename = click.format_filename(filename)
-    path = os.path.join(client.get_cwd(), filename)
-    msg = client.dfs_file_delete(path)
+    path = format_filename(filename)
+    data = {'filename': path}
+    metadata = {
+        'cmd': 'dfs_file_delete',
+        'console_data': data
+    }
+    msg = client.dfs_file_delete(metadata)
     click.echo(msg)
 
 
@@ -95,7 +116,15 @@ def dfs_file_info(filename):
     """
     Should provide information about the file (any useful information - size, node id, etc.)
     """
-    click.echo(f'Invoked \'dfs file info\' with {click.format_filename(filename)}!')
+    global client
+    path = format_filename(filename)
+    data = {'filename': path}
+    metadata = {
+        'cmd': 'dfs_file_info',
+        'console_data': data
+    }
+    msg = client.dfs_file_info(metadata)
+    click.echo(msg)
 
 
 @dfs_file.command(name='copy')
@@ -105,8 +134,19 @@ def dfs_file_copy(filename, dest):
     """
     Should allow to create a copy of file.
     """
-    click.echo(f'Invoked \'dfs file copy\' with {click.format_filename(filename)} and '
-               f'{click.format_filename(dest)}!')
+    global client
+    path = format_filename(filename)
+    dest = format_filename(dest)
+    data = {
+        'filename': path,
+        'dest': dest
+    }
+    metadata = {
+        'cmd': 'dfs_file_copy',
+        'console_data': data
+    }
+    msg = client.dfs_file_copy(metadata)
+    click.echo(msg)
 
 
 @dfs_file.command(name='move')
@@ -116,9 +156,19 @@ def dfs_file_move(filename, dest):
     """
     Should allow to move a file to the specified path.
     """
-    click.echo(f'Invoked \'dfs file move\' with'
-               f' {click.format_filename(filename)} and '
-               f' {click.format_filename(dest)}!')
+    global client
+    path = format_filename(filename)
+    dest = format_filename(dest)
+    data = {
+        'filename': path,
+        'dest': dest
+    }
+    metadata = {
+        'cmd': 'dfs_file_move',
+        'console_data': data
+    }
+    msg = client.dfs_file_move(metadata)
+    click.echo(msg)
 
 
 @dfs.group(name='dir', invoke_without_command=True)
@@ -134,8 +184,17 @@ def dfs_dir_open(name):
     """
     Should allow to change directory
     """
-    click.echo(f'Invoked \'dfs dir open\' with'
-               f' {click.format_filename(name)}!')
+    global client
+    path = format_filename(name)
+    data = {
+        'filename': path
+    }
+    metadata = {
+        'cmd': 'dfs_dir_open',
+        'console_data': data
+    }
+    msg = client.dfs_dir_open(metadata)
+    click.echo(msg)
 
 
 @dfs_dir.command(name='read')
@@ -144,8 +203,17 @@ def dfs_dir_read(name):
     """
     Should return list of files, which are stored in the directory.
     """
-    click.echo(f'Invoked \'dfs dir read\' with'
-               f' {click.format_filename(name)}!')
+    global client
+    path = format_filename(name)
+    data = {
+        'filename': path
+    }
+    metadata = {
+        'cmd': 'dfs_dir_read',
+        'console_data': data
+    }
+    msg = client.dfs_dir_read(metadata)
+    click.echo(msg)
 
 
 @dfs_dir.command(name='make')
@@ -154,8 +222,17 @@ def dfs_dir_make(name):
     """
     Should allow to create a new directory.
     """
-    click.echo(f'Invoked \'dfs dir make\' with'
-               f' {click.format_filename(name)}!')
+    global client
+    path = format_filename(name)
+    data = {
+        'filename': path
+    }
+    metadata = {
+        'cmd': 'dfs_dir_make',
+        'console_data': data
+    }
+    msg = client.dfs_dir_make(metadata)
+    click.echo(msg)
 
 
 @dfs_dir.command(name='delete')
@@ -168,5 +245,16 @@ def dfs_dir_delete(name):
     files the system should ask for confirmation from the
     user before deletion.
     """
-    click.echo(f'Invoked \'dfs dir delete\' with'
-               f' {click.format_filename(name)}!')
+    global client
+    path = format_filename(name)
+    data = {
+        'filename': path
+    }
+    metadata = {
+        'cmd': 'dfs_dir_delete',
+        'console_data': data
+    }
+    # if directory contains files
+    click.confirm('The directory contains some files. Are you sure you want to delete them?', abort=True)
+    msg = client.dfs_dir_delete(metadata)
+    click.echo(msg)

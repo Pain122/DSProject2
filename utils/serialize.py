@@ -32,12 +32,10 @@ class BaseFileModel(BaseModel):
 
 
 class FileModel(BaseFileModel):
-
     size: int
 
 
 class DirectoryModel(BaseFileModel):
-
     files: List[FileModel]
 
     def files(self):

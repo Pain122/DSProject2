@@ -8,6 +8,17 @@ class StorageModel(BaseModel):
     storage_ip: str
     available_size: int
 
+    class Config:
+        orm_mode = True
+
+class StorageListModel(List[StorageModel]):
+
+    def available_size(self):
+        res = 0
+        for storage in iter(self):
+            res += storage.available_size
+        return res
+
 
 class BaseFileModel(BaseModel):
     storages: List[StorageModel]

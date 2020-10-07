@@ -266,7 +266,8 @@ class Client:
         filenames = [file['path'] for file in response['files']]
         directory = console_data['dir']
         if directory in filenames:
-            return ''
+            self.cwd = posixpath.join(self.cwd, directory)
+            return f'You are now in {self.cwd}.'
         else:
             return f'Directory \'{directory}\' doesn\'t exist!'
 

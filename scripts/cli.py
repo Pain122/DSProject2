@@ -1,4 +1,5 @@
 import click
+import posixpath
 import os
 from client import Client
 
@@ -7,7 +8,7 @@ client = Client('/')
 
 def format_filename(filename):
     filename = click.format_filename(filename)
-    path = os.path.join(client.get_cwd(), filename)
+    path = posixpath.join(client.get_cwd(), filename)
     return path
 
 
@@ -29,8 +30,11 @@ def dfs_init():
     global client
     client = Client('/')
     data = {}
-    metadata = {'cmd': 'dfs_init',
-                'console_data': data}
+    metadata = {
+        'cmd': 'dfs_init',
+        'payload': data,
+        'console_data': data
+    }
     msg = client.dfs_init(metadata)
     click.echo(msg)
 
@@ -50,9 +54,10 @@ def dfs_file_create(filename):
     """
     global client
     path = format_filename(filename)
-    data = {'filename': path}
+    data = {'path': path}
     metadata = {
         'cmd': 'dfs_file_create',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_file_create(metadata)
@@ -67,9 +72,10 @@ def dfs_file_read(filename):
     """
     global client
     path = format_filename(filename)
-    data = {'filename': path}
+    data = {'path': path}
     metadata = {
         'cmd': 'dfs_file_read',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_file_read(metadata)
@@ -83,10 +89,16 @@ def dfs_file_write(filename):
     Should allow to put any file to DFS (upload a file from the Client side to the DFS)
     """
     global client
+    file = click.format_filename(filename)
+    size = os.path.getsize(file)
     path = format_filename(filename)
-    data = {'filename': path}
+    data = {
+        'path': path,
+        'size': size
+    }
     metadata = {
         'cmd': 'dfs_file_write',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_file_write(metadata)
@@ -101,9 +113,10 @@ def dfs_file_delete(filename):
     """
     global client
     path = format_filename(filename)
-    data = {'filename': path}
+    data = {'path': path}
     metadata = {
         'cmd': 'dfs_file_delete',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_file_delete(metadata)
@@ -118,9 +131,10 @@ def dfs_file_info(filename):
     """
     global client
     path = format_filename(filename)
-    data = {'filename': path}
+    data = {'path': path}
     metadata = {
         'cmd': 'dfs_file_info',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_file_info(metadata)
@@ -138,11 +152,12 @@ def dfs_file_copy(filename, dest):
     path = format_filename(filename)
     dest = format_filename(dest)
     data = {
-        'filename': path,
-        'dest': dest
+        'path': path,
+        'new_path': dest
     }
     metadata = {
         'cmd': 'dfs_file_copy',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_file_copy(metadata)
@@ -160,11 +175,12 @@ def dfs_file_move(filename, dest):
     path = format_filename(filename)
     dest = format_filename(dest)
     data = {
-        'filename': path,
-        'dest': dest
+        'path': path,
+        'new_path': dest
     }
     metadata = {
         'cmd': 'dfs_file_move',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_file_move(metadata)
@@ -187,11 +203,15 @@ def dfs_dir_open(name):
     global client
     path = format_filename(name)
     data = {
-        'filename': path
+        'path': client.get_cwd()
+    }
+    console_data = {
+        'dir': path
     }
     metadata = {
-        'cmd': 'dfs_dir_open',
-        'console_data': data
+        'cmd': 'dfs_read_directory',
+        'payload': data,
+        'console_data': console_data
     }
     msg = client.dfs_dir_open(metadata)
     click.echo(msg)
@@ -206,10 +226,11 @@ def dfs_dir_read(name):
     global client
     path = format_filename(name)
     data = {
-        'filename': path
+        'path': path
     }
     metadata = {
-        'cmd': 'dfs_dir_read',
+        'cmd': 'dfs_read_directory',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_dir_read(metadata)
@@ -225,10 +246,11 @@ def dfs_dir_make(name):
     global client
     path = format_filename(name)
     data = {
-        'filename': path
+        'path': path
     }
     metadata = {
-        'cmd': 'dfs_dir_make',
+        'cmd': 'dfs_make_directory',
+        'payload': data,
         'console_data': data
     }
     msg = client.dfs_dir_make(metadata)
@@ -248,10 +270,11 @@ def dfs_dir_delete(name):
     global client
     path = format_filename(name)
     data = {
-        'filename': path
+        'path': path
     }
     metadata = {
-        'cmd': 'dfs_dir_delete',
+        'cmd': 'dfs_delete_directory',
+        'payload': data,
         'console_data': data
     }
     # if directory contains files

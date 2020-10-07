@@ -1,10 +1,11 @@
 import requests
-import os
+import posixpath
 from pydantic.error_wrappers import ValidationError
 from utils.serialize import *
 from config import NAME_NODE_ADDRESS
 
 CONNECTION_ERROR = 'Connection with server is lost!'
+VALIDATION_ERROR = 'Some of the data you sent were invalid!'
 CORRUPTED_RESPONSE = 'The response from server is corrupted!'
 NO_NODE_AVAILABLE = 'No nodes are available to store this file!'
 NOT_ENOUGH_STORAGE = 'There is not enough memory to store your file!'
@@ -14,6 +15,7 @@ NO_SUCH_DIRECTORY = 'Directory with such name doesn\'t exist!'
 INTEGRITY_ERROR = 'One of the storage servers reported an integrity error!'
 
 CODE_CONNECTION_ERROR = 418
+CODE_VALIDATION_ERROR = 422
 CODE_CORRUPTED_RESPONSE = 500
 CODE_NO_NODE_AVAILABLE = 501
 CODE_NOT_ENOUGH_STORAGE = 502
@@ -24,6 +26,7 @@ CODE_INTEGRITY_ERROR = 506
 
 error_dict = {
     CODE_CORRUPTED_RESPONSE: CORRUPTED_RESPONSE,
+    CODE_VALIDATION_ERROR: VALIDATION_ERROR,
     CODE_CONNECTION_ERROR: CONNECTION_ERROR,
     CODE_NO_NODE_AVAILABLE: NO_NODE_AVAILABLE,
     CODE_NOT_ENOUGH_STORAGE: NOT_ENOUGH_STORAGE,
@@ -52,10 +55,10 @@ cmd_model_map = {
 def name_error_handler(func):
     def wrapper(*args):
         metadata = args[1]
-        cmd, console_data = metadata['cmd'], metadata['console_data']
-        uri = os.path.join(NAME_NODE_ADDRESS, cmd)
+        cmd, payload, console_data = metadata['cmd'], metadata['payload'], metadata['console_data']
+        uri = posixpath.join(NAME_NODE_ADDRESS, cmd)
         model = cmd_model_map[cmd]
-        response, code = post(uri, console_data, model)
+        response, code = post(uri, payload, model)
         if response_failed(code):
             return fetch_error_msg(code)
         else:
@@ -72,7 +75,7 @@ def storage_error_handler(func):
     def wrapper(*args):
         metadata = args[1]
         cmd, address, data = metadata['cmd'], metadata['address'], metadata['file_data']
-        url = os.path.join(address, cmd)
+        url = posixpath.join(address, cmd)
         response, code = post_storage(url, data)
         if response_failed(code):
             return fetch_error_msg(code)
@@ -87,6 +90,7 @@ def storage_error_handler(func):
                 'file': response
             }
             return func(args[0], data)
+
     return wrapper
 
 
@@ -103,7 +107,7 @@ def post_storage(url, data):
 
 def post(uri, data, model):
     try:
-        url = os.path.join(NAME_NODE_ADDRESS, uri)
+        url = posixpath.join(NAME_NODE_ADDRESS, uri)
         x = requests.post(url, json=data)
         try:
             x_data = model.parse_raw(x.content)
@@ -154,40 +158,39 @@ class Client:
         """
         Allows to create a new empty file.
         """
-        response = data['response']
-        console_data = data['console_data']
-        filename = console_data['filename']
-        node_ip = response['node_ip']
-        return f'The new file with name \'{filename}\' was created at \'{node_ip}\'.'
+        console_data, response = data['console_data'], data['response']
+        filename = response['path']
+        storages = '\n'.join([storage['storage_ip'] for storage in response['storages']])
+        return f'The new file with name \'{filename}\' was created at:\n{storages}.'
 
     @storage_error_handler
     def dfs_file_download(self, data):
         file = data['file']
         node_address = data['node_data']['address']
         filename = data['file_metadata']['path']
-        with open(os.path.basename(filename), 'w') as out:
+        with open(posixpath.basename(filename), 'w') as out:
             out.write(file)
-        return f'File {filename} has been successfully downloaded from node at {node_address}!'
+        return f'File \'{filename}\' has been successfully downloaded from node at {node_address}!'
 
     @storage_error_handler
     def dfs_file_upload(self, data):
         node_address = data['node_data']['address']
         filename = data['file_metadata']['path']
-        return f'File {filename} has been successfully uploaded to node at {node_address}'
+        return f'File \'{filename}\' has been successfully uploaded to node at {node_address}'
 
     @name_error_handler
     def dfs_file_read(self, data):
         """
         Allows to read any file from DFS (download a file from the DFS to the Client side).
         """
-        console_data = data['console_data']
-        response = data['response']
+        console_data, response = data['console_data'], data['response']
+        storages = [storage['storage_ip'] for storage in response['storages']]
         metadata = {
             'cmd': 'send',
             'file_data': {
-                'path': console_data['filename']
+                'path': response['path']
             },
-            'address': response['node_ip']
+            'address': storages[0]
         }
         return self.dfs_file_download(metadata)
 
@@ -196,14 +199,14 @@ class Client:
         """
         Allows to put any file to DFS (upload a file from the Client side to the DFS)
         """
-        console_data = data['console_data']
-        response = data['response']
+        console_data, response = data['console_data'], data['response']
+        storages = [storage['storage_ip'] for storage in response['storages']]
         metadata = {
             'cmd': 'rcv',
             'file_data': {
-                'path': console_data['filename']
+                'path': response['path']
             },
-            'address': response['node_ip']
+            'address': storages[0]
         }
         return self.dfs_file_upload(metadata)
 
@@ -212,44 +215,96 @@ class Client:
         """
         Should allow to delete any file from DFS
         """
-        console_data = data['console_data']
-        response = data['response']
-        filename = console_data['filename']
-        return f'File {filename} has been successfully deleted from node {response["node_ip"]}!'
+        console_data, response = data['console_data'], data['response']
+        storages = '\n\t'.join([storage['storage_ip'] for storage in response['storages']])
+        filename = response['path']
+        return f'File {filename} has been successfully deleted from nodes:' \
+               f'\n{storages}!\n' \
+               f'Reclaimed storage: {response["size"]}'
 
+    @name_error_handler
     def dfs_file_info(self, data):
         """
         Should provide information about the file (any useful information - size, node id, etc.)
         """
+        console_data, response = data['console_data'], data['response']
+        storages = '\n\t'.join([storage['storage_ip'] for storage in response['storages']])
+        filename = response['path']
+        return f'Full path in VFS: {filename}\n' \
+               f'File is replicated at nodes:\n{storages}!\n' \
+               f'Each replica occupies: {response["size"]}'
 
+    @name_error_handler
     def dfs_file_copy(self, data):
         """
         Should allow to create a copy of file.
         """
+        console_data, response = data['console_data'], data['response']
+        storages = '\n\t'.join([storage['storage_ip'] for storage in response['storages']])
+        filename = response['path']
+        return f'File \'{filename}\' at nodes:' \
+               f'\n{storages}!\n' \
+               f'has been copied to: {response["path"]}'
 
+    @name_error_handler
     def dfs_file_move(self, data):
         """
         Should allow to move a file to the specified path.
         """
+        console_data, response = data['console_data'], data['response']
+        storages = '\n\t'.join([storage['storage_ip'] for storage in response['storages']])
+        filename = response['path']
+        return f'File \'{filename}\' at nodes:' \
+               f'\n{storages}!\n' \
+               f'has been moved to: {response["path"]}'
 
+    @name_error_handler
     def dfs_dir_open(self, data):
         """
         Should allow to change directory
         """
+        console_data, response = data['console_data'], data['response']
+        filenames = [file['path'] for file in response['files']]
+        directory = console_data['dir']
+        if directory in filenames:
+            return ''
+        else:
+            return f'Directory \'{directory}\' doesn\'t exist!'
 
+    @name_error_handler
     def dfs_dir_read(self, data):
         """
         Should return list of files, which are stored in the directory.
         """
+        console_data, response = data['console_data'], data['response']
+        filenames = [posixpath.basename(file['path']) for file in response['files']]
+        filename = response['path']
+        filenames_string = '\n\t'.join(filenames)
+        return f'Directory \'{filename}\' contains the following files:\n' \
+               f'{filenames_string}'
 
+    @name_error_handler
     def dfs_dir_make(self, data):
         """
         Should allow to create a new directory.
         """
+        console_data, response = data['console_data'], data['response']
+        storages = '\n\t'.join([storage['storage_ip'] for storage in response['storages']])
+        filename = response['path']
+        return f'The directory \'{filename}\' at nodes:' \
+               f'\n{storages}!\n' \
+               f'has been successfully created!'
 
+    @name_error_handler
     def dfs_dir_delete(self, data):
         """
         Should allow to delete directory.  If the directory contains
         files the system should ask for confirmation from the
         user before deletion.
         """
+        console_data, response = data['console_data'], data['response']
+        storages = '\n\t'.join([storage['storage_ip'] for storage in response['storages']])
+        filename = response['path']
+        return f'The directory \'{filename}\' at nodes:' \
+               f'\n{storages}!\n' \
+               f'has been successfully removed!'

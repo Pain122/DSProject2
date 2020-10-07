@@ -281,3 +281,7 @@ def dfs_dir_delete(name):
     click.confirm('The directory contains some files. Are you sure you want to delete them?', abort=True)
     msg = client.dfs_dir_delete(metadata)
     click.echo(msg)
+
+
+if __name__ == '__main__':
+    dfs_init()

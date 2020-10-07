@@ -56,9 +56,8 @@ def name_error_handler(func):
     def wrapper(*args):
         metadata = args[1]
         cmd, payload, console_data = metadata['cmd'], metadata['payload'], metadata['console_data']
-        uri = posixpath.join(NAME_NODE_ADDRESS, cmd)
         model = cmd_model_map[cmd]
-        response, code = post(uri, payload, model)
+        response, code = post(cmd, payload, model)
         if response_failed(code):
             return fetch_error_msg(code)
         else:
@@ -110,7 +109,7 @@ def post(uri, data, model):
         url = posixpath.join(NAME_NODE_ADDRESS, uri)
         x = requests.post(url, json=data)
         try:
-            x_data = model.parse_raw(x.content)
+            x_data = dict(model.parse_raw(x.content))
             return x_data, x.status_code
         except ValidationError:
             return None, CODE_CORRUPTED_RESPONSE

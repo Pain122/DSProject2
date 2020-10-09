@@ -1,4 +1,5 @@
-from flask import Flask, request
+# TODO unite all the exception classes to a single file
+from fastapi import FastAPI
 import os
 from server.server import Server
 import sys
@@ -18,14 +19,14 @@ srv = Server(sys.argv[1])
 if not srv.connected:
     raise ServerConnectionError
 
-app = Flask(__name__)
+app = FastAPI()
 
-# The absolute path of the directory containing CSV files for users to download
-app.config["DFS"] = srv.working_dir
+# # The absolute path of the directory containing CSV files for users to download
+# app.config["DFS"] = srv.working_dir
 
 
-@app.route('/rcv', methods=['POST'])
-def create_file():
+@app.post('/rcv')
+async def create_file():
     data = request.get_json()
     check_req(data)
     if not os.path.exists(data['path']):
@@ -38,8 +39,8 @@ def create_file():
         raise IntegrityError()
 
 
-@app.route('/upd', methods=['POST'])
-def update_file():
+@app.post('/upd')
+async def update_file():
     data = request.get_json()
     if data is None:
         return {'error': 'Bad request'}, 400
@@ -55,8 +56,8 @@ def update_file():
             raise FileNotFound()
 
 
-@app.route('/send', methods=['POST'])
-def send():
+@app.post('/send')
+async def send():
     data = request.get_json()
     if data is None:
         return {'error': 'Bad request'}, 400
@@ -68,8 +69,8 @@ def send():
             abort(404)
 
 
-@app.route('/delete', methods=['POST'])
-def delete():
+@app.post('/delete')
+async def delete():
     data = request.get_json()
     if data is None:
         return {'error': 'Bad request'}, 400
@@ -81,8 +82,8 @@ def delete():
             raise FileNotFound()
 
 
-@app.route('/empty', methods=['POST'])
-def create_file():
+@app.post('/empty')
+async def create_file():
     data = request.get_json()
     check_req(data)
     if not os.path.exists(data['path']):
@@ -94,8 +95,8 @@ def create_file():
         raise IntegrityError()
 
 
-@app.route('/copy', methods=['POST'])
-def copy():
+@app.post('/copy')
+async def copy():
     data = request.get_json()
     check_req(data)
     if not (os.path.exists(data['path']) and os.path.exists(data['copy_path'])):
@@ -105,8 +106,8 @@ def copy():
         raise IntegrityError()
 
 
-@app.route('/move', methods=['POST'])
-def move():
+@app.post('/move')
+async def move():
     data = request.get_json()
     check_req(data)
     if not (os.path.exists(data['path']) and os.path.exists(data['copy_path'])):
@@ -117,8 +118,8 @@ def move():
         raise IntegrityError()
 
 
-@app.route('/mkdir', methods=['POST'])
-def mkdir():
+@app.post('/mkdir')
+async def mkdir():
     data = request.get_json()
     check_req(data)
     try:
@@ -128,8 +129,8 @@ def mkdir():
         raise IntegrityError()
 
 
-@app.route('/rmdir', methods=['POST'])
-def rmdir():
+@app.post('/rmdir')
+async def rmdir():
     data = request.get_json()
     check_req(data)
     try:
@@ -139,6 +140,6 @@ def rmdir():
         raise IntegrityError()
 
 
-@app.route('/ping', methods=['GET'])
-def ping():
+@app.post('/ping', methods=['GET'])
+async def ping():
     return {'status': 'OK'}

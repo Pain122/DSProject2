@@ -11,11 +11,13 @@ class StorageModel(BaseModel):
     class Config:
         orm_mode = True
 
-class StorageListModel(List[StorageModel]):
+class StorageListModel(BaseModel):
+
+    storages: List[StorageModel]
 
     def available_size(self):
         res = 0
-        for storage in iter(self):
+        for storage in self.storages:
             res += storage.available_size
         return res
 
@@ -32,13 +34,15 @@ class BaseFileModel(BaseModel):
 
 
 class FileModel(BaseFileModel):
-
     size: int
+
+    class Config:
+        orm_mode = True
 
 
 class DirectoryModel(BaseFileModel):
 
     files: List[FileModel]
 
-    def files(self):
+    def _files(self):
         return [path.dirname(file.path) for file in self.files]

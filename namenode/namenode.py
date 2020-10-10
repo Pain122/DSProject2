@@ -54,7 +54,7 @@ async def file_write(file: frmf('FileWriteRequest', size=True)):
     if not Directory.exist(os.path.dirname(file.path)):
         # TODO: add exception
         pass
-    resp = write_file(**file.dict())
+    resp = write_file(file)
     return resp
 
 
@@ -64,7 +64,7 @@ async def file_delete(file: frmf('FileDeleteRequest')):
     if not File.exists(file.path):
         # TODO: add exception
         pass
-    resp = delete_file(**file.dict())
+    resp = delete_file(file)
     return resp
 
 
@@ -81,7 +81,7 @@ async def file_copy(file: frmf('FileCopyRequest', new_path=True)):
     if not Directory.exist(os.path.dirname(file.path)):
         # TODO: add exception
         pass
-    resp = copy_file(**file.dict())
+    resp = copy_file(file)
     return resp
 
 
@@ -91,7 +91,7 @@ async def file_move(file: frmf('FileMoveRequest', new_path=True)):
     if not Directory.exist(os.path.dirname(file.path)):
         # TODO: add exception
         pass
-    resp = move_file(**file.dict())
+    resp = move_file(file)
     return resp
 
 

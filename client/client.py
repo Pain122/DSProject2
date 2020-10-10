@@ -1,7 +1,7 @@
 import requests
 import posixpath
 from pydantic.error_wrappers import ValidationError
-from utils.serialize import *
+from utils.serialize.general import *
 from config import NAME_NODE_ADDRESS
 
 CONNECTION_ERROR = 'Connection with server is lost!'

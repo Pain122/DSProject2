@@ -1,6 +1,10 @@
 import click
 import posixpath
 import os
+
+import requests
+from requests_toolbelt import MultipartEncoder
+
 from client import Client
 
 client = Client('/')
@@ -92,17 +96,32 @@ def dfs_file_write(filename):
     file = click.format_filename(filename)
     size = os.path.getsize(file)
     path = format_filename(filename)
-    data = {
-        'path': path,
-        'size': size
-    }
-    metadata = {
-        'cmd': 'dfs_file_write',
-        'payload': data,
-        'console_data': data
-    }
-    msg = client.dfs_file_write(metadata)
-    click.echo(msg)
+    with open(file, 'rb') as f:
+        data = {
+            'path': path,
+            'size': size
+        }
+        console_data = {
+            'path': path,
+            'file': f
+        }
+        metadata = {
+            'cmd': 'dfs_file_write',
+            'payload': data,
+            'console_data': console_data
+        }
+        # mp_encoder = MultipartEncoder(
+        #     fields={
+        #         'path': console_data['path'],
+        #         'file': (console_data['path'], console_data['file'], 'text/plain'),
+        #     }
+        # )
+        # response = requests.post("http://10.242.1.154:8000/create",
+        #               data=mp_encoder,
+        #               headers={'Content-Type': mp_encoder.content_type})
+        # click.echo(response)
+        msg = client.dfs_file_write(metadata)
+        click.echo(msg)
 
 
 @dfs_file.command(name='delete')
@@ -284,4 +303,4 @@ def dfs_dir_delete(name):
 
 
 if __name__ == '__main__':
-    dfs_init()
+    dfs_file_write()

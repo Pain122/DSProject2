@@ -12,9 +12,10 @@ class Status(BaseModel):
 class FileReport(BaseModel):
     status: Status
     is_replica: bool
+    storage_id: str
     path: str
 
-    def __init__(self, ok: bool, path: str, is_replica: bool):
+    def __init__(self, ok: bool, path: str, is_replica: bool, storage_id: str):
         if ok:
             status = Status.default()
         else:

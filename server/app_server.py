@@ -3,7 +3,7 @@ from fastapi import FastAPI, UploadFile
 import os
 from fastapi.params import File, Form
 from config import DEBUG, WORKING_DIR
-from server.server import Server, FileModel, post
+from server.server import Server, FileModel
 import sys
 from shutil import copyfile
 from werkzeug.exceptions import BadRequest

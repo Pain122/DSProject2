@@ -1,17 +1,15 @@
-
 from starlette.responses import FileResponse
 from fastapi import FastAPI, UploadFile
 import os
-
 from fastapi.params import File, Form
-
 from config import DEBUG, WORKING_DIR
-from server.server import Server, StorageListModel, FileModel, post
+from server.server import Server, FileModel, post
 import sys
-from flask import send_from_directory, abort
 from shutil import copyfile
 from werkzeug.exceptions import BadRequest
-from server.exceptions import IntegrityError, FileNotFound, ServerConnectionError
+from server.exceptions import IntegrityError, ServerConnectionError
+from utils.serialize.server.response import Status
+from typing import List
 
 
 def iterate_path(path: str):
@@ -56,12 +54,11 @@ app = FastAPI()
 
 @app.get('/ping')
 async def ping():
-    return {'status': 'ok'}
+    return Status.default()
 
 
 @app.post('/create')
 async def create_file(path: str = Form(...), file: UploadFile = File(...)):
-    # TODO rewrite BOB, use working directory
     file_path = make_file_path(path)
     folder_path = make_dirs_path(path)
 
@@ -75,7 +72,7 @@ async def create_file(path: str = Form(...), file: UploadFile = File(...)):
 
             f.close()
 
-        return {'status': 'ok'}
+        return Status.default()
     else:
         raise IntegrityError
 
@@ -87,17 +84,17 @@ async def delete_file(path: str = Form(...)):
 
     if os.path.isfile(file_path):
         rm_file_folders(file_path, folder_path)
-        return {'status': 'ok'}
+        return Status.default()
     else:
         raise IntegrityError
 
 
 @app.post('/replicate')
-async def replicate(file: FileModel):
+async def replicate(file: List[FileModel]):
     for storage in file.storages:
         f = open(WORKING_DIR + file.path, 'rb')
         post(storage.storage_ip, '/crt', f, File(...), False)
-    return {'status': 'ok'}
+    return Status.default()
 
 
 @app.post('/copy')
@@ -109,7 +106,7 @@ async def copy(path: str = Form(...), new_path: str = Form(...)):
     if not (os.path.isfile(path) and not os.path.isfile(new_path)):
         check_create_dirs(folder_path)
         copyfile(file_path, new_file_path)
-        return {'status': 'ok'}
+        return Status.default()
     else:
         raise IntegrityError()
 
@@ -125,7 +122,7 @@ async def move(path: str = Form(...), new_path: str = Form(...)):
         check_create_dirs(new_folder_path)
         copyfile(file_path, new_file_path)
         rm_file_folders(file_path, folder_path)
-        return {'status': 'ok'}
+        return Status.default()
     else:
         raise IntegrityError()
 
@@ -137,12 +134,8 @@ async def send(path: str = Form(...)):
         return FileResponse(file_path)
     else:
         raise IntegrityError()
-#
-#
-#
-#
-#
-#
-# @app.get('/ping')
-# async def ping():
-#     return {'status': 'OK'}
+
+
+@app.get('/ping')
+async def ping():
+    return Status.default()

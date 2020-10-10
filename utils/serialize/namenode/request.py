@@ -19,7 +19,3 @@ def frmf(name='FileRequestModel', new_path: bool = False, size: bool = False):
     if size:
         kwargs['size'] = (int, ...)
     return create_model(name, **kwargs)
-
-
-
-

@@ -8,4 +8,6 @@ class InitResponse(BaseModel):
 
 
 class AddNodeResponse(BaseModel):
-    storage_id: int
+    storage_id: str
+
+

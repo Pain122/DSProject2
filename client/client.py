@@ -1,41 +1,9 @@
 import requests
 import posixpath
 from pydantic.error_wrappers import ValidationError
+from requests_toolbelt.multipart.encoder import MultipartEncoder
 from utils.serialize.general import *
-from config import NAME_NODE_ADDRESS
-
-CONNECTION_ERROR = 'Connection with server is lost!'
-VALIDATION_ERROR = 'Some of the data you sent were invalid!'
-CORRUPTED_RESPONSE = 'The response from server is corrupted!'
-NO_NODE_AVAILABLE = 'No nodes are available to store this file!'
-NOT_ENOUGH_STORAGE = 'There is not enough memory to store your file!'
-NODE_DISCONNECTED = 'Node storing the file disconnected!'
-FILE_NOT_FOUND = 'File with such name was not found!'
-NO_SUCH_DIRECTORY = 'Directory with such name doesn\'t exist!'
-INTEGRITY_ERROR = 'One of the storage servers reported an integrity error!'
-
-CODE_CONNECTION_ERROR = 418
-CODE_VALIDATION_ERROR = 422
-CODE_CORRUPTED_RESPONSE = 500
-CODE_NO_NODE_AVAILABLE = 501
-CODE_NOT_ENOUGH_STORAGE = 502
-CODE_NODE_DISCONNECTED = 503
-CODE_FILE_NOT_FOUND = 504
-CODE_NO_SUCH_DIRECTORY = 505
-CODE_INTEGRITY_ERROR = 506
-
-error_dict = {
-    CODE_CORRUPTED_RESPONSE: CORRUPTED_RESPONSE,
-    CODE_VALIDATION_ERROR: VALIDATION_ERROR,
-    CODE_CONNECTION_ERROR: CONNECTION_ERROR,
-    CODE_NO_NODE_AVAILABLE: NO_NODE_AVAILABLE,
-    CODE_NOT_ENOUGH_STORAGE: NOT_ENOUGH_STORAGE,
-    CODE_NODE_DISCONNECTED: NODE_DISCONNECTED,
-    CODE_FILE_NOT_FOUND: FILE_NOT_FOUND,
-    CODE_NO_SUCH_DIRECTORY: NO_SUCH_DIRECTORY,
-    CODE_INTEGRITY_ERROR: INTEGRITY_ERROR
-}
-
+from config import *
 cmd_model_map = {
     'dfs_init': StorageModel,
     'dfs_file_create': FileModel,
@@ -75,7 +43,7 @@ def storage_error_handler(func):
         metadata = args[1]
         cmd, address, data = metadata['cmd'], metadata['address'], metadata['file_data']
         url = posixpath.join(address, cmd)
-        response, code = post_storage(url, data)
+        response, code = post_storage(url, data=data, headers={'Content-Type': data.content_type})
         if response_failed(code):
             return fetch_error_msg(code)
         else:
@@ -93,9 +61,9 @@ def storage_error_handler(func):
     return wrapper
 
 
-def post_storage(url, data):
+def post_storage(url, data, headers):
     try:
-        x = requests.post(url, json=data)
+        x = requests.post(url, data=data, headers=headers)
         try:
             return x.content, x.status_code
         except ValueError:
@@ -174,8 +142,7 @@ class Client:
     @storage_error_handler
     def dfs_file_upload(self, data):
         node_address = data['node_data']['address']
-        filename = data['file_metadata']['path']
-        return f'File \'{filename}\' has been successfully uploaded to node at {node_address}'
+        return f'File has been successfully uploaded to node at {node_address}'
 
     @name_error_handler
     def dfs_file_read(self, data):
@@ -200,11 +167,15 @@ class Client:
         """
         console_data, response = data['console_data'], data['response']
         storages = [storage['storage_ip'] for storage in response['storages']]
+        mp_encoder = MultipartEncoder(
+            fields={
+                'path': console_data['path'],
+                'file': (console_data['path'], console_data['file'], 'text/plain'),
+            }
+        )
         metadata = {
-            'cmd': 'rcv',
-            'file_data': {
-                'path': response['path']
-            },
+            'cmd': 'create',
+            'file_data': mp_encoder,
             'address': storages[0]
         }
         return self.dfs_file_upload(metadata)

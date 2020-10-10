@@ -1,5 +1,7 @@
-from pydantic import BaseModel, create_model
+from fastapi.params import File
+from pydantic import BaseModel
+
 
 class CreateFile(BaseModel):
     path = str
-    file =''
+    file = File(...)

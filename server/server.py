@@ -1,23 +1,35 @@
+import os
 import posixpath
 
-import requests
 import psutil
-import os
-
+import requests
 from pydantic.error_wrappers import ValidationError
 
-from config import NAME_NODE_ADDRESS
+from config import NAME_NODE_ADDRESS, CODE_CORRUPTED_RESPONSE, CODE_CONNECTION_ERROR
 from server.exceptions import DirDoesNotExist
-from utils.serialize.general import StorageModel
-from utils.serialize.namenode import *
-from client.client import post, CODE_CORRUPTED_RESPONSE, CODE_CONNECTION_ERROR
+from utils.serialize.server import *
+
+
+def post(ip, uri, data, model, js=True):
+    try:
+        url = posixpath.join(ip, uri)
+        if js:
+            x = requests.post(f'http://{ip}/' + uri, json=data)
+        else:
+            x = requests.post(f'http://{ip}/' + uri, file=data)
+        try:
+            x_data = model.parse_raw(x.content)
+            return x_data
+        except ValidationError:
+            return None, CODE_CORRUPTED_RESPONSE
+    except requests.exceptions.ConnectionError:
+        return None, CODE_CONNECTION_ERROR
 
 
 class Server:
     def __init__(self, server_ip, working_dir=os.getcwd()):
         ###
         # server_ip: String; NameNode ip address
-        # files_per_dir: Integer; Number of files allowed per directory
         ###
         if not os.path.isdir(working_dir):
             raise DirDoesNotExist()
@@ -26,28 +38,8 @@ class Server:
         self.id = 0
         self.connected = False
 
-    def post(self, uri, data, model):
-        try:
-            url = posixpath.join(NAME_NODE_ADDRESS, uri)
-            x = requests.post(url, json=data)
-            try:
-                x_data = dict(model.parse_raw(x.content))
-                return x_data, x.status_code
-            except ValidationError:
-                return None, CODE_CORRUPTED_RESPONSE
-        except requests.exceptions.ConnectionError:
-            return None, CODE_CONNECTION_ERROR
-
-#     def connect_to_server(self):
-#         data = {'size': psutil.disk_usage('/').free}
-#         self.post('/new_node', data, AddNodeResponse)
-#         resp = requests.get('https://' + self.server_ip + '/new_node/', data)
-#         try:
-#             resp = requests.get('https://' + self.server_ip + '/new_node/', data)
-#             self.connected = True
-#             self.id = AddNodeResponse.parse_raw(resp.content)
-#             print('Connection Successful! Node id:' + str(resp.json()['id']))
-#         exc:
-#             return {'error': 'Could not connect to the NameNode'}
-#
-# AddNodeResponse.parse_raw(resp.content)
+    def connect_to_server(self):
+        data = AddNodeRequest(available_storage=psutil.disk_usage('/').free)
+        resp = post(NAME_NODE_ADDRESS, '/new_node', data.dict(), AddNodeResponse)
+        self.id = resp.storage_id
+        print('Connection Successful! Node id:' + str(resp.json()['id']))

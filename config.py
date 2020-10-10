@@ -1,3 +1,5 @@
+import os
+
 import sqlalchemy as sql
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -8,8 +10,10 @@ from utils.serialize.general import *
 General config
 """
 NAME_NODE_ADDRESS = "http://228.228.228.228:80"
+DEBUG = True
+WORKING_DIR = 'C:\\Users\\pavel\\Innopolis\\DS\\Project2\\working_dir_example'
 
-#ERROR CODES
+# ERROR CODES
 CODE_CONNECTION_ERROR = 418
 CODE_VALIDATION_ERROR = 422
 CODE_CORRUPTED_RESPONSE = 500

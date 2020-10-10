@@ -175,6 +175,10 @@ class Node(Base):
     def query_by_dir(cls, path: str) -> Query:
         return cls.q().join(FileNode).filter(FileNode.path.startswith(path))
 
+    @classmethod
+    def get_sorted_nodes(cls) -> List['Node']:
+        return cls.q().order_by(Node.available_size.desc()).all() or []
+
 class Directory(Base):
     __tablename__ = 'dirs'
     path = Column(String, primary_key=True)

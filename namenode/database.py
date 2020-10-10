@@ -1,88 +1,209 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from __future__ import annotations
+from sqlalchemy import Column, Integer, String, ForeignKey, Table
 from .settings import Base
-from .settings import session
-from sqlalchemy import func
-from sqlalchemy import exc
-from sqlalchemy.orm import query, relationship
-from .storage_conn import *
-from .exceptions import *
+from sqlalchemy.orm import relationship, backref, Query
+from .settings import *
+from typing import List
+from sqlalchemy.sql.selectable import Exists
+from utils.serialize.general import StorageListModel
 
 
-class FilesTable(Base):
+def db_init() -> None:
+    File.q().delete(synchronize_session='fetch')
+    FileNode.q().delete(synchronize_session='fetch')
+    session.commit()
+
+
+def get_dir_model(path: str) -> DirectoryModel:
+    files = [FileModel.from_orm(file) for file in File.query_by_dir(path)]
+    storages = [StorageModel.from_orm(storage) for storage in Node.query_by_dir(path)]
+    return DirectoryModel(files=files, storages=storages, path=path)
+
+
+class FileNode(Base):
+    __tablename__ = 'file_node'
+    path = Column(String, ForeignKey('files.path', ondelete="CASCADE"), primary_key=True)
+    storage_id = Column(String, ForeignKey('nodes.storage_id', ondelete="CASCADE"), primary_key=True)
+
+    @classmethod
+    def q(cls) -> Query:
+        return session.query(cls)
+
+    @classmethod
+    def query_by_paths(cls, paths: List[str] or str) -> Query:
+        if isinstance(paths, str):
+            paths = [paths]
+        q = session.query(cls).filter(cls.path.in_(paths))
+        return q
+
+    @classmethod
+    def query_by_node_ids(cls, node_ids: List[int] or int) -> Query:
+        if isinstance(node_ids, int):
+            node_ids = [node_ids]
+        q = session.query(cls).filter(cls.storage_id.in_(node_ids))
+        return q
+
+
+class File(Base):
     __tablename__ = 'files'
-    storage_id = Column(Integer, primary_key=True)
-    path = Column(String)
+    path = Column(String, primary_key=True)
     size = Column(Integer)
-    storage_rel = relationship('NodesTable', foreign_keys='FilesTable.storage_id')
+    storages = relationship("Node", secondary='file_node', cascade='all, delete')
+
+    @classmethod
+    def q(cls) -> Query:
+        return session.query(cls)
+
+    @classmethod
+    def create(cls, new_file: FileModel) -> File:
+        dict_obj = cls._construct_semimodels([new_file])
+        new_obj = cls(**dict_obj)
+        session.add(new_obj)
+        session.commit()
+        return new_obj
+
+    @classmethod
+    def _get_storages_from_model(cls, storages: List[StorageModel]) -> List[Node]:
+        return Node.query_by_ids([storage.storage_id for storage in storages]).all()
+
+    @classmethod
+    def _construct_semimodels(cls, files: List[FileModel]) -> List[dict] or dict:
+        if len(files) == 1:
+            temp_dict = files[0].dict()
+            temp_dict['storages'] = cls._get_storages_from_model(files[0].storages)
+            return temp_dict
+        res = []
+        for file in files:
+            temp_dict = file.dict()
+            temp_dict['storages'] = cls._get_storages_from_model(file.storages)
+            res.append(temp_dict)
+        return res
+
+    @classmethod
+    def create_many(cls, new_files: List[FileModel]) -> List['File']:
+        dict_objs = cls._construct_semimodels(new_files)
+        new_objs = [cls(**dict_obj) for dict_obj in dict_objs]
+        session.add_all(new_objs)
+        session.commit()
+        return new_objs
+
+    @classmethod
+    def query_by_paths(cls, paths: List[str] or str = None, q: Query = None) -> Query:
+        q = cls.q() if q is None else q
+        if paths is None:
+            return q
+        if isinstance(paths, str):
+            paths = [paths]
+        q = q.filter(cls.path.in_(paths))
+        return q
+
+    @classmethod
+    def exists(cls, paths: List[str] or str, q: Query = None) -> bool:
+        return cls.query_by_paths(paths, q=q).count() > 0
+
+    @classmethod
+    def query_real_files(cls, q: Query = None) -> Query:
+        if q is None:
+            q = cls.q()
+        q = q.join(FileNode)
+        return q
+
+    @classmethod
+    def delete(cls, paths: List[str] or str) -> int:
+        q = cls.query_by_paths(paths, cls.q())
+        num_of_deleted = q.delete(synchronize_session='fetch')
+        FileNode.query_by_paths(paths).delete(synchronize_session='fetch')
+        return num_of_deleted
+
+    @classmethod
+    def query_by_dir(cls, path: str, q: Query = None) -> Query:
+        if q is None:
+            q = cls.q()
+        return q.filter(File.path.startswith(path))
 
 
-class NodesTable(Base):
+class Node(Base):
     __tablename__ = 'nodes'
-    storage_id = Column(Integer, primary_key=True, autoincrement=True)
-    storage_size = Column(Integer)
-    addr = Column(String)
+    storage_id = Column(String, primary_key=True)
+    storage_ip = Column(String)
+    available_size = Column(Integer)
+    # files = relationship("File", secondary='file_node', cascade="all, delete-orphan", single_parent=True)
 
+    @classmethod
+    def q(cls) -> Query:
+        return session.query(cls)
 
-def create_object(obj):
-    session.add(obj)
-    try:
+    @classmethod
+    def create(cls, new_node: StorageModel) -> 'Node':
+        new_obj = cls(**new_node.dict())
+        session.add(new_obj)
+        session.commit()
+        return new_obj
+
+    @classmethod
+    def create_many(cls, new_nodes: List[StorageModel]) -> List['Node']:
+        new_objs = [cls(**new_node.dict()) for new_node in new_nodes]
+        session.add_all(new_objs)
+        session.commit()
+        return new_objs
+
+    @classmethod
+    def query_by_ids(cls, node_ids: List[int] or int = None) -> Query:
+        if isinstance(node_ids, int):
+            node_ids = [node_ids]
+        q = cls.q()
+        if node_ids is None:
+            return q
+        return q.filter(cls.storage_id.in_(node_ids))
+
+    @classmethod
+    def delete(cls, ids: List[int] or int) -> int:
+        q = cls.query_by_ids(ids)
+        q_a = FileNode.query_by_node_ids(ids)
+        num_of_deleted = q.delete(synchronize_session='fetch')
+        q_a.delete(synchronize_session='fetch')
+        session.commit()
+        return num_of_deleted
+
+    @classmethod
+    def get_node_models(cls, node_ids: List[int] or int = None) -> StorageListModel:
+        node_objs = cls.query_by_ids(node_ids=node_ids).all()
+        storages = [StorageModel.from_orm(node_obj) for node_obj in node_objs]
+        return StorageListModel(storages=storages)
+
+    @classmethod
+    def query_by_dir(cls, path: str) -> Query:
+        return cls.q().join(FileNode).filter(FileNode.path.startswith(path))
+
+class Directory(Base):
+    __tablename__ = 'dirs'
+    path = Column(String, primary_key=True)
+
+    @classmethod
+    def q(cls) -> Query:
+        return session.query(cls)
+
+    @classmethod
+    def create(cls, path: str) -> 'Directory':
+        existing_dir = cls._exist(path)
+        if existing_dir is not None:
+            return existing_dir
+        obj = cls(path=path)
+        session.add(obj)
         session.commit()
         return obj
-    except exc.IntegrityError:
-        session.rollback()
-        raise ServerError()
 
 
-def get_available_size():
-    return session.query(func.sum(NodesTable.storage_size)).scalar()
+    @classmethod
+    def _exist(cls, path: str) -> 'Directory':
+        q = cls.q()
+        return q.filter(cls.path == path).scalar()
 
+    @classmethod
+    def exist(cls, path: str) -> bool:
+        return cls._exist(path) is not None
 
-def add_node(addr, size):
-    obj = NodesTable(storage_size=size, addr=addr)
-    create_object(obj)
-    return obj.storage_id
-
-
-def get_most_free_node():
-    """
-    Сделать проверку на отсутствие ноды
-    """
-    return None
-
-
-def create_file(filename):
-    node = get_most_free_node()
-    obj = FilesTable(storage_id=node.id, path=filename, size=0)
-    create_new_file(node.addr, filename)
-    create_object(obj)
-    return obj.storage_id
-
-
-def write_file(filename, size):
-    """
-    TODO: подумать над тем, что стоит создавать рекорды после фактической записи файла
-    """
-    node = get_most_free_node()
-    if node.storage_size - size <= 0:
-        raise NotEnoughStorage()
-    obj = FilesTable(storage_id=node.id, path=filename, size=size)
-    create_object(obj)
-    node.storage_size -= size
-    session.commit()
-    return node.addr
-
-
-def find_node_by_file(filename):
-    res = session.query(FilesTable.storage_id).filter(FilesTable.path == filename)
-    node = session.query(NodesTable).filter(NodesTable.storage_id == res[0])[0]
-    return node
-
-
-def delete_file(filename):
-    res = session.query(FilesTable).filter(FilesTable.path == filename)
-    for entry in res:
-        node = session.query(NodesTable).filter(NodesTable.storage_id == entry.storage_id)[0]
-        delete(node.addr, filename)
-        node.storage_size -= entry.storage_id
-    res.delete()
-    session.commit()
+    @classmethod
+    def delete(cls, path: str) -> None:
+        cls.q().filter(Directory.path == path).delete(synchronize_session='fetch')
+        session.commit()

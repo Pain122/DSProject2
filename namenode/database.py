@@ -1,10 +1,8 @@
 from __future__ import annotations
-from sqlalchemy import Column, Integer, String, ForeignKey, Table
-from .settings import Base
-from sqlalchemy.orm import relationship, backref, Query
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, Query
 from .settings import *
 from typing import List
-from sqlalchemy.sql.selectable import Exists
 from utils.serialize.general import StorageListModel
 
 

@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from .database import *
 from .storage_conn import *
 from uuid import uuid4
+from .exceptions import *
 import os
 
 app = FastAPI()
@@ -29,8 +30,7 @@ async def add_new_node(node: AddNodeRequest, request: Request):
 async def file_create(file: frmf('FileCreateRequest')):
     ping_n_repl()
     if not Directory.exist(os.path.dirname(file.path)):
-        # TODO: add exception
-        pass
+        raise NoSuchDirectory()
     resp = create_file(file)
     return resp
 
@@ -43,17 +43,19 @@ async def file_read(file: frmf('FileReadRequest')):
     ping_n_repl()
     file_obj = File.query_by_paths(file.path).scalar()
     if file_obj is None:
-        # TODO: add exception
-        pass
-    return FileModel.from_orm(file_obj)
+        raise FileNotFound()
+    resp = FileModel.from_orm(file_obj)
+    resp.storages = ping_all(resp.storages)
+    if len(resp.storages) == 0:
+        raise NodeDisconnected()
+    return resp
 
 
 @app.post('/dfs_file_write', response_model=FileModel)
 async def file_write(file: frmf('FileWriteRequest', size=True)):
     ping_n_repl()
     if not Directory.exist(os.path.dirname(file.path)):
-        # TODO: add exception
-        pass
+        raise NoSuchDirectory()
     resp = write_file(file)
     return resp
 
@@ -62,8 +64,7 @@ async def file_write(file: frmf('FileWriteRequest', size=True)):
 async def file_delete(file: frmf('FileDeleteRequest')):
     ping_n_repl()
     if not File.exists(file.path):
-        # TODO: add exception
-        pass
+        raise FileNotFound()
     resp = delete_file(file)
     return resp
 
@@ -71,6 +72,8 @@ async def file_delete(file: frmf('FileDeleteRequest')):
 @app.post('/dfs_file_info', response_model=FileModel)
 async def file_info(file: frmf('FileInfoRequest')):
     ping_n_repl()
+    if not File.exists(file.path):
+        raise FileNotFound()
     file_obj = File.query_by_paths(file.path).scalar()
     return FileModel.from_orm(file_obj)
 
@@ -79,8 +82,7 @@ async def file_info(file: frmf('FileInfoRequest')):
 async def file_copy(file: frmf('FileCopyRequest', new_path=True)):
     ping_n_repl()
     if not Directory.exist(os.path.dirname(file.path)):
-        # TODO: add exception
-        pass
+        raise NoSuchDirectory()
     resp = copy_file(file)
     return resp
 
@@ -89,8 +91,7 @@ async def file_copy(file: frmf('FileCopyRequest', new_path=True)):
 async def file_move(file: frmf('FileMoveRequest', new_path=True)):
     ping_n_repl()
     if not Directory.exist(os.path.dirname(file.path)):
-        # TODO: add exception
-        pass
+        raise NoSuchDirectory()
     resp = move_file(file)
     return resp
 
@@ -99,8 +100,7 @@ async def file_move(file: frmf('FileMoveRequest', new_path=True)):
 async def read_directory(dir: DirectoryRequestModel):
     ping_n_repl()
     if not Directory.exist(dir.path):
-        # TODO: add exception
-        pass
+        raise NoSuchDirectory()
     resp = get_dir_model(dir.path)
     return resp
 
@@ -109,20 +109,18 @@ async def read_directory(dir: DirectoryRequestModel):
 async def make_directory(dir: DirectoryRequestModel):
     ping_n_repl()
     if Directory.exist(dir.path):
-        # TODO: add exception
-        pass
+        raise NoSuchDirectory()
     Directory.create(dir.path)
     resp = DirectoryModel(storages=[], files=[], path=dir.path)
     return resp
 
+
 @app.post('/dfs_delete_directory', response_model=DirectoryModel)
 async def delete_directory(dir: DirectoryRequestModel):
     if not Directory.exist(dir.path):
-        # TODO: add exception
-        pass
+        raise NoSuchDirectory()
     if File.query_by_dir(dir.path).count() > 0 or Directory.q().filter(Directory.path.startswith(dir.path)).count() > 1:
-        # TODO: add exception
-        pass
+        raise NotEmptyDirectory()
     resp = get_dir_model(dir.path)
     Directory.delete(dir.path)
     return resp

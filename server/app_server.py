@@ -1,15 +1,39 @@
 from starlette.responses import FileResponse
 from fastapi import FastAPI, UploadFile
+from config import NAME_NODE_ADDRESS
 import os
 from fastapi.params import File, Form
-from config import DEBUG, WORKING_DIR
+from config import DEBUG
 from server.server import Server, FileModel
 import sys
 from shutil import copyfile
 from werkzeug.exceptions import BadRequest
 from server.exceptions import IntegrityError, ServerConnectionError
-from utils.serialize.server.response import Status
+from utils.serialize.namenode import frmf
+from utils.serialize.server.response import Status, FileReport
 from typing import List
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+
+WORKING_DIR = 'C:\\Users\\pavel\\Innopolis\\DS\\Project2\\working_dir_example'
+
+
+def replica(file_path: str, path: str, storage_ip: str):
+    mp_encoder = MultipartEncoder(
+        fields={
+            'path': path,
+            'file': ('None', open(file_path, 'rb'), 'text/plain'),
+        }
+    )
+    r = requests.post(
+        'http://' + storage_ip + '/create',
+        data=mp_encoder,
+        headers={'Content-Type': mp_encoder.content_type}
+    )
+    return True
+    # if Status.parse_raw(r.raw).status == 'ok':
+    #     return True
+    # else:
+    #     return False
 
 
 def iterate_path(path: str):
@@ -72,15 +96,19 @@ async def create_file(path: str = Form(...), file: UploadFile = File(...)):
 
             f.close()
 
+        if not DEBUG:
+            report = FileReport(True, file_path, srv.id)
+            requests.post('http://' + NAME_NODE_ADDRESS + '/report', report)
+
         return Status.default()
     else:
         raise IntegrityError
 
 
 @app.post('/delete')
-async def delete_file(path: str = Form(...)):
-    file_path = make_file_path(path)
-    folder_path = make_dirs_path(path)
+async def delete_file(file: frmf('DeleteModel')):
+    file_path = make_file_path(file.path)
+    folder_path = make_dirs_path(file.path)
 
     if os.path.isfile(file_path):
         rm_file_folders(file_path, folder_path)
@@ -89,22 +117,14 @@ async def delete_file(path: str = Form(...)):
         raise IntegrityError
 
 
-@app.post('/replicate')
-async def replicate(file: List[FileModel]):
-    for storage in file.storages:
-        f = open(WORKING_DIR + file.path, 'rb')
-        post(storage.storage_ip, '/crt', f, File(...), False)
-    return Status.default()
-
-
 @app.post('/copy')
-async def copy(path: str = Form(...), new_path: str = Form(...)):
-    file_path = make_file_path(path)
-    new_file_path = make_file_path(new_path)
-    folder_path = make_dirs_path(new_path)
+async def copy(path: frmf('CopyModel', new_path=True)):
+    file_path = make_file_path(path.path)
+    new_file_path = make_file_path(path.new_path)
+    new_folder_path = make_dirs_path(path.new_path)
 
-    if not (os.path.isfile(path) and not os.path.isfile(new_path)):
-        check_create_dirs(folder_path)
+    if not (os.path.isfile(file_path) and not os.path.isfile(new_file_path)):
+        check_create_dirs(new_folder_path)
         copyfile(file_path, new_file_path)
         return Status.default()
     else:
@@ -112,11 +132,11 @@ async def copy(path: str = Form(...), new_path: str = Form(...)):
 
 
 @app.post('/move')
-async def move(path: str = Form(...), new_path: str = Form(...)):
-    file_path = make_file_path(path)
-    new_file_path = make_file_path(new_path)
-    folder_path = make_dirs_path(path)
-    new_folder_path = make_dirs_path(new_path)
+async def move(path: frmf('MoveModel', new_path=True)):
+    file_path = make_file_path(path.path)
+    new_file_path = make_file_path(path.new_path)
+    folder_path = make_dirs_path(path.path)
+    new_folder_path = make_dirs_path(path.new_path)
 
     if os.path.isfile(file_path) and not os.path.isfile(new_file_path):
         check_create_dirs(new_folder_path)
@@ -128,7 +148,7 @@ async def move(path: str = Form(...), new_path: str = Form(...)):
 
 
 @app.post('/send')
-async def send(path: str = Form(...)):
+async def send(path: str):
     file_path = make_file_path(path)
     if os.path.isfile(file_path):
         return FileResponse(file_path)
@@ -139,3 +159,19 @@ async def send(path: str = Form(...)):
 @app.get('/ping')
 async def ping():
     return Status.default()
+
+
+@app.post('/replicate')
+async def replicate(files: List[FileModel]):
+    for file_model in files:
+        file_path = make_file_path(file_model.path)
+        if os.path.isfile(file_path):
+            for serv in file_model.storages:
+                print('sas')
+                print(serv.storage_ip)
+                replica(file_path, file_model.path, serv.storage_ip)
+        else:
+            raise IntegrityError
+
+    return Status.default()
+

@@ -3,9 +3,10 @@ import posixpath
 from pydantic.error_wrappers import ValidationError
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from utils.serialize.general import *
+from utils.serialize.namenode import *
 from config import *
 cmd_model_map = {
-    'dfs_init': StorageModel,
+    'dfs_init': InitResponse,
     'dfs_file_create': FileModel,
     'dfs_file_read': FileModel,
     'dfs_file_write': FileModel,
@@ -76,6 +77,8 @@ def post(uri, data, model):
     try:
         url = posixpath.join(NAME_NODE_ADDRESS, uri)
         x = requests.post(url, json=data)
+        print(x.content)
+        print(model)
         try:
             x_data = dict(model.parse_raw(x.content))
             return x_data, x.status_code
@@ -116,9 +119,9 @@ class Client:
         response = data['response']
         size = response['size']
         return f'Available size: {size} bytes' \
-               f' or {size / 1024} kilobytes or' \
-               f' {size / 1024 / 1024} megabytes or' \
-               f' {size / 1024 / 1024 / 1024} gigabytes.'
+               f' or {size // 1024} kilobytes or' \
+               f' {size // 1024 // 1024} megabytes or' \
+               f' {size // 1024 // 1024 // 1024} gigabytes.'
 
     @name_error_handler
     def dfs_file_create(self, data):

@@ -1,9 +1,12 @@
 from __future__ import annotations
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, func, ForeignKeyConstraint, alias, BigInteger
+from sqlalchemy.sql.expression import insert
 from sqlalchemy.orm import relationship, Query
-from .settings import *
+from config import *
 from typing import List
+from sqlalchemy.sql.selectable import Exists
 from utils.serialize.general import StorageListModel
+import logging
 
 
 def db_init() -> None:
@@ -35,8 +38,8 @@ class FileNode(Base):
         return q
 
     @classmethod
-    def query_by_node_ids(cls, node_ids: List[int] or int) -> Query:
-        if isinstance(node_ids, int):
+    def query_by_node_ids(cls, node_ids: List[str] or str) -> Query:
+        if isinstance(node_ids, str):
             node_ids = [node_ids]
         q = session.query(cls).filter(cls.storage_id.in_(node_ids))
         return q
@@ -46,16 +49,16 @@ class File(Base):
     __tablename__ = 'files'
     path = Column(String, primary_key=True)
     size = Column(Integer)
-    storages = relationship("Node", secondary='file_node', cascade='all, delete')
+    storages = relationship("Node", secondary='file_node', cascade='all, delete', passive_deletes=True)
+    # const = ForeignKeyConstraint(['path'], ['file_node.path'], ondelete='DELETE')
 
     @classmethod
     def q(cls) -> Query:
         return session.query(cls)
 
     @classmethod
-    def create(cls, new_file: FileModel) -> File:
-        dict_obj = cls._construct_semimodels([new_file])
-        new_obj = cls(**dict_obj)
+    def create(cls, **new_file) -> File:
+        new_obj = cls(**new_file)
         session.add(new_obj)
         session.commit()
         return new_obj
@@ -65,22 +68,8 @@ class File(Base):
         return Node.query_by_ids([storage.storage_id for storage in storages]).all()
 
     @classmethod
-    def _construct_semimodels(cls, files: List[FileModel]) -> List[dict] or dict:
-        if len(files) == 1:
-            temp_dict = files[0].dict()
-            temp_dict['storages'] = cls._get_storages_from_model(files[0].storages)
-            return temp_dict
-        res = []
-        for file in files:
-            temp_dict = file.dict()
-            temp_dict['storages'] = cls._get_storages_from_model(file.storages)
-            res.append(temp_dict)
-        return res
-
-    @classmethod
-    def create_many(cls, new_files: List[FileModel]) -> List['File']:
-        dict_objs = cls._construct_semimodels(new_files)
-        new_objs = [cls(**dict_obj) for dict_obj in dict_objs]
+    def create_many(cls, new_files: List[dict]) -> List['File']:
+        new_objs = [cls(**new_file) for new_file in new_files]
         session.add_all(new_objs)
         session.commit()
         return new_objs
@@ -110,7 +99,6 @@ class File(Base):
     def delete(cls, paths: List[str] or str) -> int:
         q = cls.query_by_paths(paths, cls.q())
         num_of_deleted = q.delete(synchronize_session='fetch')
-        FileNode.query_by_paths(paths).delete(synchronize_session='fetch')
         return num_of_deleted
 
     @classmethod
@@ -146,8 +134,8 @@ class Node(Base):
         return new_objs
 
     @classmethod
-    def query_by_ids(cls, node_ids: List[int] or int = None) -> Query:
-        if isinstance(node_ids, int):
+    def query_by_ids(cls, node_ids: List[str] or str = None) -> Query:
+        if isinstance(node_ids, str):
             node_ids = [node_ids]
         q = cls.q()
         if node_ids is None:
@@ -157,9 +145,7 @@ class Node(Base):
     @classmethod
     def delete(cls, ids: List[int] or int) -> int:
         q = cls.query_by_ids(ids)
-        q_a = FileNode.query_by_node_ids(ids)
         num_of_deleted = q.delete(synchronize_session='fetch')
-        q_a.delete(synchronize_session='fetch')
         session.commit()
         return num_of_deleted
 
@@ -171,11 +157,11 @@ class Node(Base):
 
     @classmethod
     def query_by_dir(cls, path: str) -> Query:
-        return cls.q().join(FileNode).filter(FileNode.path.startswith(path))
+        return cls.q().join(FileNode).filter(FileNode.path.startswith(path), Node.active==True)
 
     @classmethod
-    def get_sorted_nodes(cls) -> List['Node']:
-        return cls.q().order_by(Node.available_size.desc()).all() or []
+    def get_sorted_nodes(cls, size=0) -> List['Node']:
+        return cls.q().filter(cls.available_size > size, Node.active==True).order_by(Node.available_size.desc()).all() or []
 
 class Directory(Base):
     __tablename__ = 'dirs'

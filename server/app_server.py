@@ -1,28 +1,17 @@
 from starlette.responses import FileResponse
 from fastapi import FastAPI, UploadFile
-from config import NAME_NODE_ADDRESS
-import os
-from fastapi.params import File, Form
-from config import DEBUG
-from server.server import Server, FileModel
+from fastapi.params import File as FileForm, Form
+from config import *
+from server.server import Server
 import sys
 from shutil import copyfile
 from werkzeug.exceptions import BadRequest
 from server.exceptions import IntegrityError, ServerConnectionError
 from utils.serialize.namenode import frmf
 from utils.serialize.server.response import Status, FileReport
-from typing import List
 from requests_toolbelt.multipart.encoder import MultipartEncoder
-
-WORKING_DIR = 'C:\\Users\\pavel\\Innopolis\\DS\\Project2\\working_dir_example'
-
-
-def query_storage():
-    return node.query(storages).all()
-
-
-def query_file(path):
-    return node.query(path).exists()
+import requests
+from .dbconn import *
 
 
 def check_file(path: str, file_path: str, folder_path: str):
@@ -48,18 +37,19 @@ def report(file_path: str):
         requests.post('http://' + NAME_NODE_ADDRESS + '/report', rep)
 
 
-def replica(file_path: str, path: str, storage_ip: str):
+def replica(file_path: str, path: str, storage_ips: str):
     mp_encoder = MultipartEncoder(
         fields={
             'path': path,
             'file': ('None', open(file_path, 'rb'), 'text/plain'),
         }
     )
-    requests.post(
-        'http://' + storage_ip + '/create',
-        data=mp_encoder,
-        headers={'Content-Type': mp_encoder.content_type}
-    )
+    for storage_ip in storage_ips:
+        requests.post(
+            'http://' + storage_ip + '/create',
+            data=mp_encoder,
+            headers={'Content-Type': mp_encoder.content_type}
+        )
     return True
 
 
@@ -95,9 +85,10 @@ def check_req(data):
         raise BadRequest()
 
 
-srv = Server(sys.argv[1])
-
+srv = Server(NAME_NODE_ADDRESS)
+srv.connect_to_server()
 if not srv.connected and not DEBUG:
+    print(srv)
     raise ServerConnectionError
 
 app = FastAPI()
@@ -109,7 +100,7 @@ async def ping():
 
 
 @app.post('/create')
-async def create_file(path: str = Form(...), file: UploadFile = File(...)):
+async def create_file(path: str = Form(...), file: UploadFile = FileForm(...)):
     file_path = make_file_path(path)
     folder_path = make_dirs_path(path)
 
@@ -119,8 +110,8 @@ async def create_file(path: str = Form(...), file: UploadFile = File(...)):
         report(file_path)
 
         if check_file(path, file_path, folder_path):
-            storage = query_storage()
-            replica(file_path, path, storage)
+            storages = query_storage(srv.id, path)
+            replica(file_path, path, storages)
 
         return Status.default()
     else:
@@ -128,7 +119,7 @@ async def create_file(path: str = Form(...), file: UploadFile = File(...)):
 
 
 @app.post('/create_replica')
-async def create_file(path: str = Form(...), file: UploadFile = File(...)):
+async def create_replica(path: str = Form(...), file: UploadFile = FileForm(...)):
     file_path = make_file_path(path)
     folder_path = make_dirs_path(path)
 

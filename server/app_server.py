@@ -17,6 +17,37 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 WORKING_DIR = 'C:\\Users\\pavel\\Innopolis\\DS\\Project2\\working_dir_example'
 
 
+def query_storage():
+    return node.query(storages).all()
+
+
+def query_file(path):
+    return node.query(path).exists()
+
+
+def check_file(path: str, file_path: str, folder_path: str):
+    if query_file(path):
+        rm_file_folders(file_path, folder_path)
+
+
+def create(file_path: str, folder_path: str, file: UploadFile):
+    if not os.path.isfile(file_path):
+
+        check_create_dirs(folder_path)
+
+        with open(file_path, 'ab') as f:
+            for chunk in iter(lambda: file.file.read(10000), b''):
+                f.write(chunk)
+
+            f.close()
+
+
+def report(file_path: str):
+    if not DEBUG:
+        rep = FileReport(True, file_path, srv.id)
+        requests.post('http://' + NAME_NODE_ADDRESS + '/report', rep)
+
+
 def replica(file_path: str, path: str, storage_ip: str):
     mp_encoder = MultipartEncoder(
         fields={
@@ -24,16 +55,12 @@ def replica(file_path: str, path: str, storage_ip: str):
             'file': ('None', open(file_path, 'rb'), 'text/plain'),
         }
     )
-    r = requests.post(
+    requests.post(
         'http://' + storage_ip + '/create',
         data=mp_encoder,
         headers={'Content-Type': mp_encoder.content_type}
     )
     return True
-    # if Status.parse_raw(r.raw).status == 'ok':
-    #     return True
-    # else:
-    #     return False
 
 
 def iterate_path(path: str):
@@ -88,17 +115,32 @@ async def create_file(path: str = Form(...), file: UploadFile = File(...)):
 
     if not os.path.isfile(file_path):
 
-        check_create_dirs(folder_path)
+        create(file_path, folder_path, file)
+        report(file_path)
 
-        with open(file_path, 'ab') as f:
-            for chunk in iter(lambda: file.file.read(10000), b''):
-                f.write(chunk)
+        if check_file(path, file_path, folder_path):
+            storage = query_storage()
+            replica(file_path, path, storage)
 
-            f.close()
+        return Status.default()
+    else:
+        raise IntegrityError
 
-        if not DEBUG:
-            report = FileReport(True, file_path, srv.id)
-            requests.post('http://' + NAME_NODE_ADDRESS + '/report', report)
+
+@app.post('/create_replica')
+async def create_file(path: str = Form(...), file: UploadFile = File(...)):
+    file_path = make_file_path(path)
+    folder_path = make_dirs_path(path)
+
+    if not os.path.isfile(file_path):
+
+        create(file_path, folder_path, file)
+        report(file_path)
+
+        if query_file(path):
+            rm_file_folders(file_path, folder_path)
+
+        check_file(path, file_path, folder_path)
 
         return Status.default()
     else:
@@ -126,6 +168,7 @@ async def copy(path: frmf('CopyModel', new_path=True)):
     if not (os.path.isfile(file_path) and not os.path.isfile(new_file_path)):
         check_create_dirs(new_folder_path)
         copyfile(file_path, new_file_path)
+        check_file(path.new_path, new_file_path, new_folder_path)
         return Status.default()
     else:
         raise IntegrityError()
@@ -142,6 +185,7 @@ async def move(path: frmf('MoveModel', new_path=True)):
         check_create_dirs(new_folder_path)
         copyfile(file_path, new_file_path)
         rm_file_folders(file_path, folder_path)
+        check_file(path.new_path, new_file_path, new_folder_path)
         return Status.default()
     else:
         raise IntegrityError()
@@ -167,11 +211,8 @@ async def replicate(files: List[FileModel]):
         file_path = make_file_path(file_model.path)
         if os.path.isfile(file_path):
             for serv in file_model.storages:
-                print('sas')
-                print(serv.storage_ip)
                 replica(file_path, file_model.path, serv.storage_ip)
         else:
             raise IntegrityError
 
     return Status.default()
-

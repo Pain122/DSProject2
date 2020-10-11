@@ -86,7 +86,6 @@ def check_req(data):
 
 
 srv = Server(NAME_NODE_ADDRESS)
-srv.connect_to_server()
 if not srv.connected and not DEBUG:
     print(srv)
     raise ServerConnectionError

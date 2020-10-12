@@ -33,11 +33,12 @@ CODE_FILE_EXISTS = 509
 """
 Namenode config
 """
+DB_NAME = os.getenv('DB_NAME') or 'test'
 DB_ADDR = os.getenv('DB_ADDR')
 DB_LOGIN = os.getenv('DB_LOGIN')
 DB_PASS = os.getenv('DB_PASS')
 if DB_ADDR is not None:
-    db_engine = create_engine(f'postgres://{DB_LOGIN}:{DB_PASS}@{DB_ADDR}/test', echo=False)
+    db_engine = create_engine(f'postgres://{DB_LOGIN}:{DB_PASS}@{DB_ADDR}/{DB_NAME}', echo=False)
     Base = declarative_base()
     Session = sessionmaker(bind=db_engine)
     session = Session()

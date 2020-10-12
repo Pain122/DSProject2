@@ -21,6 +21,8 @@ import uvicorn
 def check_file(path: str, file_path: str, folder_path: str):
     if not query_file(path):
         rm_file_folders(file_path, folder_path)
+        return False
+    return True
 
 
 def create(file_path: str, folder_path: str, file: UploadFile):

@@ -20,7 +20,10 @@ def post(ip, uri, model: Any, **data) -> Any:
     url = join(url_wrapper(ip), uri)
     try:
         x = r.post(url, **data, timeout=11)
-        return model.parse_raw(x.content)
+        if x.ok:
+            return model.parse_raw(x.content)
+        else:
+            raise NodeDisconnected()
     except r.exceptions.Timeout:
         logger.info(f'Node {url} does not answer')
         raise NodeDisconnected()
@@ -30,7 +33,10 @@ def get(ip, uri, model: Any) -> Any:
     url = join(url_wrapper(ip), uri)
     try:
         x = r.get(url, timeout=1)
-        return model.parse_raw(x.content)
+        if x.ok:
+            return model.parse_raw(x.content)
+        else:
+            raise NodeDisconnected()
     except r.exceptions.Timeout:
         logger.info(f'Node {url} does not answer')
         raise NodeDisconnected()

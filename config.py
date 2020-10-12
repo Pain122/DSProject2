@@ -11,9 +11,9 @@ import uvicorn
 """
 General config
 """
-NAME_NODE_ADDRESS = "http://127.0.0.1:8000"
+NAME_NODE_ADDRESS = os.getenv('NAMENODE_ADDR')
 DEBUG = False
-WORKING_DIR = '/Users/nikitasmirnov/tests/dist'
+WORKING_DIR = os.getenv('WORKING_DIR')
 
 # ERROR CODES
 CODE_CONNECTION_ERROR = 418
@@ -33,14 +33,22 @@ CODE_FILE_EXISTS = 509
 """
 Namenode config
 """
-db_engine = create_engine('postgres://nikitasmirnov::5931@127.0.0.1:5432/test', echo=False)
+DB_ADDR = os.getenv('DB_ADDR')
+DB_LOGIN = os.getenv('DB_LOGIN')
+DB_PASS = os.getenv('DB_PASS')
+db_engine = create_engine(f'postgres://{DB_LOGIN}:{DB_PASS}@{DB_ADDR}/test', echo=False)
 Base = declarative_base()
 Session = sessionmaker(bind=db_engine)
 session = Session()
-REPLICATION_ORDER = 2
-# log_config = uvicorn.config.LOGGING_CONFIG
-# log_config["formatters"]["access"]["fmt"] = "%(asctime)s - %(levelname)s - %(message)s"
-logger = logging.getLogger("uvicorn.error")
+REPLICATION_ORDER = os.getenv('REPLICATION_ORDER') or 2
+
+
+class FakeLogger:
+    def info(self, *args, **kwargs):
+        pass
+
+
+logger = logging.getLogger("uvicorn.error") if os.getenv('DEBUG') is not None else FakeLogger()
 
 """
 Client config

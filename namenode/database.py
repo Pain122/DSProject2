@@ -9,7 +9,6 @@ from utils.serialize.general import StorageListModel
 import logging
 import string
 
-
 def db_init() -> None:
     File.q().delete(synchronize_session='fetch')
     FallenFileNode.q().delete(synchronize_session='fetch')
@@ -55,7 +54,7 @@ class FileNode(Base):
             q = cls.q()
         if path[-1] != '/':
             path += '/'
-        return q.filter(cls.path.op('SIMILAR TO')(f'({path})\\w+'))
+        return q.filter(cls.path.op('SIMILAR TO')(f'({path})[A-Za-z_\\-.]+'))
 
 
 class PendingFileNode(Base):
@@ -180,7 +179,7 @@ class File(Base):
             q = cls.q()
         if path[-1] != '/':
             path += '/'
-        return q.filter(cls.path.op('SIMILAR TO')(f'({path})\\w+'))
+        return q.filter(cls.path.op('SIMILAR TO')(f'({path})[A-Za-z_\\-.]+'))
 
     @classmethod
     def append_storages(cls, path: str, storage_ids: List[str] or str) -> None:
@@ -342,7 +341,7 @@ class Directory(Base):
             q = cls.q()
         if path[-1] != '/':
             path += '/'
-        return q.filter(cls.path.op('SIMILAR TO')(f'({path})\\w+'))
+        return q.filter(cls.path.op('SIMILAR TO')(f'({path})[A-Za-z_\\-.]+'))
 
     @classmethod
     def delete(cls, path: str) -> None:

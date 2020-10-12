@@ -220,7 +220,7 @@ def dfs_dir_open(name):
     Should allow to change directory
     """
     global client
-    path = click.format_filename(name)
+    path = format_filename(name)
     data = {
         'path': client.get_cwd()
     }

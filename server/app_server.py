@@ -171,7 +171,7 @@ async def copy(path: frmf('CopyModel', new_path=True)):
     new_file_path = make_file_path(path.new_path)
     new_folder_path = make_dirs_path(path.new_path)
 
-    if not (os.path.isfile(file_path) and not os.path.isfile(new_file_path)):
+    if os.path.isfile(file_path) and not os.path.isfile(new_file_path):
         check_create_dirs(new_folder_path)
         copyfile(file_path, new_file_path)
         check_file(path.new_path, new_file_path, new_folder_path)

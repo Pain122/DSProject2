@@ -14,9 +14,10 @@ import uvicorn
 app = FastAPI()
 
 Base.metadata.bind = db_engine
-Base.metadata.drop_all()
 Base.metadata.create_all()
-Directory.create('/')
+
+if not Directory.exist('/'):
+    Directory.create('/')
 
 origins = [
     "http://localhost*",

@@ -125,17 +125,13 @@ async def init():
 async def create_file(path: str = Form(...), file: UploadFile = FileForm(...)):
     file_path = make_file_path(path)
     folder_path = make_dirs_path(path)
-    logger.info(file_path)
-    logger.info(folder_path)
+    logger.info(f'Create file {file_path}')
     if not os.path.isfile(file_path):
         create(file_path, folder_path, file)
-        logger.info('sus')
         await report(path)
-        logger.info('sos')
         if check_file(path, file_path, folder_path):
             storages = query_storage(srv.id, path)
             replica(file_path, path, storages)
-        logger.info('sas')
         return Status.default()
     else:
         raise IntegrityError()

@@ -58,7 +58,7 @@ def replica(file_path: str, path: str, storage_ips: str):
     for storage_ip in storage_ips:
         try:
             requests.post(
-                'http://' + storage_ip + '/create',
+                'http://' + storage_ip + '/create_replica',
                 data=mp_encoder,
                 headers={'Content-Type': mp_encoder.content_type},
                 timeout=1
@@ -141,17 +141,10 @@ async def create_file(path: str = Form(...), file: UploadFile = FileForm(...)):
 async def create_replica(path: str = Form(...), file: UploadFile = FileForm(...)):
     file_path = make_file_path(path)
     folder_path = make_dirs_path(path)
-
     if not os.path.isfile(file_path):
-
         create(file_path, folder_path, file)
         await report(path)
-
-        if not query_file(path):
-            rm_file_folders(file_path, folder_path)
-
         check_file(path, file_path, folder_path)
-
         return Status.default()
     else:
         raise IntegrityError

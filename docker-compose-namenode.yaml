@@ -1,0 +1,27 @@
+version: "3.8"
+services:
+  namenode:
+    container_name: namenode
+    restart: on-failure
+    environment:
+      DB_ADDR: db
+      DB_LOGIN: nikitasmirnov
+      DB_PASS: yanikitasmirnov
+      DB_NAME: test
+      DEBUG: 1
+    build:
+      context: .
+      dockerfile: namenode.dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+  db:
+    container_name: db
+    environment:
+      POSTGRES_USER: nikitasmirnov
+      POSTGRES_PASSWORD: yanikitasmirnov
+      POSTGRES_DB: test
+    build: postgres
+    ports:
+     - "5432:5432"

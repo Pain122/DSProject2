@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+
+  storage:
+    container_name: storage
+    environment:
+      storage.env
+    build:
+      context: .
+      dockerfile: storage_node.dockerfile
+    volumes:
+    - /var/storage:/var/storage
+    restart: on-failure
+    network_mode: "host"

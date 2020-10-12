@@ -15,6 +15,7 @@ from .dbconn import *
 from .node_conn import post
 import shutil
 import asyncio
+import uvicorn
 
 
 def check_file(path: str, file_path: str, folder_path: str):
@@ -223,3 +224,7 @@ async def replicate(files: List[FileModel]):
             raise IntegrityError
 
     return Status.default()
+
+
+if __name__ == '__main__':
+    uvicorn.run(app, host="0.0.0.0", port=srv.port)

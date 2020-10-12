@@ -186,9 +186,12 @@ async def make_directory(dir: DirectoryRequestModel):
 
 @app.post('/dfs_delete_directory', response_model=DirectoryModel)
 async def delete_directory(dir: DirectoryRequestModel):
+    logger.info('Delete Dir request')
     if not Directory.exist(dir.path):
         raise NoSuchDirectory()
-    if File.query_by_dir(dir.path).count() > 0 or Directory.q().filter(Directory.path.startswith(dir.path)).count() > 1:
+    if File.query_by_dir(dir.path).count() > 0 or Directory.query_by_dir(dir.path).count() > 0:
+        logger.info(f'Files: {File.query_by_dir(dir.path).from_self(File.path).all()}')
+        logger.info(f'Directory: {Directory.query_by_dir(dir.path).from_self(Directory.path).all()}')
         raise NotEmptyDirectory()
     resp = get_dir_model(dir.path)
     Directory.delete(dir.path)

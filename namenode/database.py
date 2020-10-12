@@ -347,8 +347,6 @@ class Directory(Base):
             format_path += '\\/'
         return q.filter(cls.path.op('~')(f'({path}[A-z]+)'))
 
-
-
     @classmethod
     def delete(cls, path: str) -> None:
         cls.q().filter(Directory.path == path).delete(synchronize_session='fetch')

@@ -56,11 +56,15 @@ def replica(file_path: str, path: str, storage_ips: str):
         }
     )
     for storage_ip in storage_ips:
-        requests.post(
-            'http://' + storage_ip + '/create',
-            data=mp_encoder,
-            headers={'Content-Type': mp_encoder.content_type}
-        )
+        try:
+            requests.post(
+                'http://' + storage_ip + '/create',
+                data=mp_encoder,
+                headers={'Content-Type': mp_encoder.content_type},
+                timeout=1
+            )
+        except requests.Timeout:
+            logger.info(f'Node {storage_ip} does not answer')
     return True
 
 

@@ -20,7 +20,8 @@ def db_init() -> None:
 
 def get_dir_model(path: str) -> DirectoryModel:
     files = [SimpleFileModel.from_orm(file) for file in File.query_by_dir(path)]
-    dirs = []
+    dirs = [SimpleFileModel.from_orm(dir) for dir in Directory.query_by_dir(path)]
+    files += dirs
     storages = [StorageModel.from_orm(storage) for storage in Node.query_by_dir(path)]
     return DirectoryModel(files=files, storages=storages, path=path)
 

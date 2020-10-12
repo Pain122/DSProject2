@@ -36,10 +36,11 @@ Namenode config
 DB_ADDR = os.getenv('DB_ADDR')
 DB_LOGIN = os.getenv('DB_LOGIN')
 DB_PASS = os.getenv('DB_PASS')
-db_engine = create_engine(f'postgres://{DB_LOGIN}:{DB_PASS}@{DB_ADDR}/test', echo=False)
-Base = declarative_base()
-Session = sessionmaker(bind=db_engine)
-session = Session()
+if DB_ADDR is not None:
+    db_engine = create_engine(f'postgres://{DB_LOGIN}:{DB_PASS}@{DB_ADDR}/test', echo=False)
+    Base = declarative_base()
+    Session = sessionmaker(bind=db_engine)
+    session = Session()
 REPLICATION_ORDER = os.getenv('REPLICATION_ORDER') or 2
 
 

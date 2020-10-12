@@ -5,6 +5,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 from utils.serialize.general import *
 from utils.serialize.namenode import *
 from config import *
+
 cmd_model_map = {
     'dfs_init': InitResponse,
     'dfs_file_create': FileModel,
@@ -77,7 +78,7 @@ def post(uri, data, model):
     try:
         url = posixpath.join(NAME_NODE_ADDRESS, uri)
         x = requests.post(url, json=data)
-        if not x.status_code.ok:
+        if not x.ok:
             return None, x.status_code
         try:
             x_data = model.parse_raw(x.content).dict()

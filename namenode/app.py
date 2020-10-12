@@ -62,6 +62,8 @@ async def add_new_node(node: AddNodeRequest, request: Request):
         Node.create(model)
     else:
         node = Node.q().filter(Node.storage_ip.startswith(node_ip)).scalar()
+        node.storage_ip = node_full_ip
+        session.commit()
         storage_id = node.storage_id
         logger.info(f'Node {node.storage_id} up!')
         paths = node.up()

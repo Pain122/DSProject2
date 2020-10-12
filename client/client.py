@@ -6,6 +6,7 @@ from utils.serialize.general import *
 from utils.serialize.namenode import *
 from config import *
 
+
 cmd_model_map = {
     'dfs_init': InitResponse,
     'dfs_file_create': FileModel,
@@ -76,6 +77,7 @@ def post_storage(url, data, headers):
 
 def post(uri, data, model):
     try:
+        # print(NAME_NODE_ADDRESS, uri)
         url = posixpath.join(NAME_NODE_ADDRESS, uri)
         x = requests.post(url, json=data)
         if not x.ok:
@@ -242,7 +244,9 @@ class Client:
         console_data, response = data['console_data'], data['response']
         filenames = [file['path'] for file in response['files']]
         directory = console_data['dir']
-        if directory in filenames:
+        print(directory)
+        print(filenames)
+        if directory in filenames or directory == '/':
             self.cwd = posixpath.join(self.cwd, directory)
             return f'You are now in {self.cwd}.'
         else:
@@ -254,10 +258,10 @@ class Client:
         Should return list of files, which are stored in the directory.
         """
         console_data, response = data['console_data'], data['response']
-        filenames = [posixpath.basename(file['path']) for file in response['files']]
+        filenames = [file['path'] for file in response['files']]
         filename = response['path']
         filenames_string = '\n\t'.join(filenames)
-        return f'Directory \'{filename}\' contains the following files:\n' \
+        return f'Directory \'{filename}\' contains the following files:\n\t' \
                f'{filenames_string}'
 
     @name_error_handler
@@ -285,3 +289,6 @@ class Client:
         return f'The directory \'{filename}\' at nodes:' \
                f'\n{storages}!\n' \
                f'has been successfully removed!'
+
+
+client = Client("/")

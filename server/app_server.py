@@ -6,7 +6,7 @@ from server.server import Server
 import sys
 from shutil import copyfile
 from werkzeug.exceptions import BadRequest
-from server.exceptions import IntegrityError, ServerConnectionError
+from .exceptions import IntegrityError, ServerConnectionError
 from utils.serialize.namenode import frmf
 from utils.serialize.server.response import Status, FileReport
 from requests_toolbelt.multipart.encoder import MultipartEncoder

@@ -5,14 +5,16 @@ import os
 import requests
 from requests_toolbelt import MultipartEncoder
 
-from client import Client
+from client.client import client, Client
 
-client = Client('/')
+def get_cwd():
+    with open('cwd.txt', 'r') as cwd:
+        return cwd.readline()
 
 
 def format_filename(filename):
     filename = click.format_filename(filename)
-    path = posixpath.join(client.get_cwd(), filename)
+    path = posixpath.join(get_cwd(), filename)
     return path
 
 
@@ -31,8 +33,8 @@ def dfs_init():
     should remove any existing file in the dfs root
     directory and return available size.
     """
-    global client
-    client = Client('/')
+    with open('cwd.txt', 'w') as cwd:
+        cwd.write('/')
     data = {}
     metadata = {
         'cmd': 'dfs_init',
@@ -56,7 +58,7 @@ def dfs_file_create(filename):
     """
     Should allow to create a new empty file.
     """
-    global client
+    
     path = format_filename(filename)
     data = {'path': path}
     metadata = {
@@ -74,7 +76,7 @@ def dfs_file_read(filename):
     """
     Should allow to read any file from DFS (download a file from the DFS to the Client side).
     """
-    global client
+    
     path = format_filename(filename)
     data = {'path': path}
     metadata = {
@@ -92,7 +94,7 @@ def dfs_file_write(filename):
     """
     Should allow to put any file to DFS (upload a file from the Client side to the DFS)
     """
-    global client
+    
     file = click.format_filename(filename)
     size = os.path.getsize(file)
     path = format_filename(filename)
@@ -130,7 +132,7 @@ def dfs_file_delete(filename):
     """
     Should allow to delete any file from DFS
     """
-    global client
+    
     path = format_filename(filename)
     data = {'path': path}
     metadata = {
@@ -148,7 +150,7 @@ def dfs_file_info(filename):
     """
     Should provide information about the file (any useful information - size, node id, etc.)
     """
-    global client
+    
     path = format_filename(filename)
     data = {'path': path}
     metadata = {
@@ -167,7 +169,7 @@ def dfs_file_copy(filename, dest):
     """
     Should allow to create a copy of file.
     """
-    global client
+    
     path = format_filename(filename)
     dest = format_filename(dest)
     data = {
@@ -190,7 +192,7 @@ def dfs_file_move(filename, dest):
     """
     Should allow to move a file to the specified path.
     """
-    global client
+    
     path = format_filename(filename)
     dest = format_filename(dest)
     data = {
@@ -219,7 +221,7 @@ def dfs_dir_open(name):
     """
     Should allow to change directory
     """
-    global client
+    import re
     path = format_filename(name)
     data = {
         'path': client.get_cwd()
@@ -233,6 +235,9 @@ def dfs_dir_open(name):
         'console_data': console_data
     }
     msg = client.dfs_dir_open(metadata)
+    if re.fullmatch(r"You are now in /[a-zA-Z/]*\.", msg):
+        with open('cwd.txt', 'w') as cwd:
+            cwd.write(re.search(r'(/.*)\.', msg).group(1))
     click.echo(msg)
 
 
@@ -242,7 +247,7 @@ def dfs_dir_read(name):
     """
     Should return list of files, which are stored in the directory.
     """
-    global client
+    
     path = format_filename(name)
     data = {
         'path': path
@@ -262,7 +267,7 @@ def dfs_dir_make(name):
     """
     Should allow to create a new directory.
     """
-    global client
+    
     path = format_filename(name)
     data = {
         'path': path
@@ -286,7 +291,7 @@ def dfs_dir_delete(name):
     files the system should ask for confirmation from the
     user before deletion.
     """
-    global client
+    
     path = format_filename(name)
     data = {
         'path': path
@@ -302,5 +307,10 @@ def dfs_dir_delete(name):
     click.echo(msg)
 
 
+@dfs_dir.command(name='cwd')
+def cwd():
+    click.echo(get_cwd())
+
+
 if __name__ == '__main__':
-    dfs_file_write()
+    pass

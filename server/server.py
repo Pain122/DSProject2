@@ -6,7 +6,7 @@ import requests
 from pydantic.error_wrappers import ValidationError
 
 from config import *
-from server.exceptions import DirDoesNotExist
+from .exceptions import DirDoesNotExist
 from utils.serialize.server import *
 import uvicorn
 import socket

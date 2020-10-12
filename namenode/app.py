@@ -13,7 +13,6 @@ import uvicorn
 
 app = FastAPI()
 
-Base.metadata.bind = db_engine
 Base.metadata.create_all()
 
 if not Directory.exist('/'):

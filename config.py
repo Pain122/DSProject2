@@ -42,6 +42,7 @@ if DB_ADDR is not None:
     Base = declarative_base()
     Session = sessionmaker(bind=db_engine)
     session = Session()
+    Base.metadata.bind = db_engine
 REPLICATION_ORDER = os.getenv('REPLICATION_ORDER') or 2
 
 

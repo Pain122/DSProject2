@@ -11,10 +11,10 @@ import logging
 
 def db_init() -> None:
     File.q().delete(synchronize_session='fetch')
-    FileNode.q().delete(synchronize_session='fetch')
-    PendingFileNode.q().delete(synchronize_session='fetch')
     FallenFileNode.q().delete(synchronize_session='fetch')
+    Directory.q().delete(synchronize_session='fetch')
     session.commit()
+    Directory.create('/')
 
 
 def get_dir_model(path: str) -> DirectoryModel:

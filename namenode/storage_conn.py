@@ -95,7 +95,6 @@ def create_file(file: frmf('FileCreateRequest')) -> FileModel:
         raise FileExists()
 
     nodes = Node.get_sorted_nodes()
-    logger.debug(nodes)
     main_send, repl_send = main_replica_split(nodes)
     print('sas')
     if len(main_send) == 0:

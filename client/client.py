@@ -15,10 +15,10 @@ cmd_model_map = {
     'dfs_file_move': FileModel,
     'dfs_file_copy': FileModel,
     'dfs_file_info': FileModel,
-    'dfs_dir_open': DirectoryModel,
-    'dfs_dir_make': DirectoryModel,
-    'dfs_dir_delete': DirectoryModel,
-    'dfs_dir_read': DirectoryModel,
+    'dfs_open_directory': DirectoryModel,
+    'dfs_make_directory': DirectoryModel,
+    'dfs_delete_directory': DirectoryModel,
+    'dfs_read_directory': DirectoryModel,
 }
 
 

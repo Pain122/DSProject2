@@ -320,7 +320,7 @@ class Directory(Base):
 
     @classmethod
     def exist(cls, path: str) -> bool:
-        return cls._exist(path) is not None
+        return cls.q().filter(cls.path == path).count() != 0
 
     @classmethod
     def delete(cls, path: str) -> None:

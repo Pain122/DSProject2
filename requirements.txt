@@ -21,3 +21,4 @@ typing-extensions==3.7.4.3
 urllib3==1.25.10
 uvicorn==0.12.1
 Werkzeug==1.0.1
+python-multipart==0.0.5

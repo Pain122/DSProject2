@@ -7,6 +7,7 @@ from typing import List
 from sqlalchemy.sql.selectable import Exists
 from utils.serialize.general import StorageListModel
 import logging
+import string
 
 
 def db_init() -> None:
@@ -18,7 +19,8 @@ def db_init() -> None:
 
 
 def get_dir_model(path: str) -> DirectoryModel:
-    files = [FileModel.from_orm(file) for file in File.query_by_dir(path)]
+    files = [SimpleFileModel.from_orm(file) for file in File.query_by_dir(path)]
+    dirs = []
     storages = [StorageModel.from_orm(storage) for storage in Node.query_by_dir(path)]
     return DirectoryModel(files=files, storages=storages, path=path)
 
@@ -45,6 +47,15 @@ class FileNode(Base):
             node_ids = [node_ids]
         q = session.query(cls).filter(cls.storage_id.in_(node_ids))
         return q
+
+    @classmethod
+    def query_by_dir(cls, path: str, q: Query = None) -> Query:
+        if q is None:
+            q = cls.q()
+        format_path = path.replace('/', '\\/')
+        if format_path[-3:] != '\\/':
+            format_path += '\\/'
+        return q.filter(cls.path.op('~')(f'({path}[A-z]+)'))
 
 
 class PendingFileNode(Base):
@@ -167,7 +178,10 @@ class File(Base):
     def query_by_dir(cls, path: str, q: Query = None) -> Query:
         if q is None:
             q = cls.q()
-        return q.filter(File.path.startswith(path))
+        format_path = path.replace('/', '\\/')
+        if format_path[-3:] != '\\/':
+            format_path += '\\/'
+        return q.filter(cls.path.op('~')(f'({path}[A-z]+)'))
 
     @classmethod
     def append_storages(cls, path: str, storage_ids: List[str] or str) -> None:
@@ -228,7 +242,8 @@ class Node(Base):
 
     @classmethod
     def query_by_dir(cls, path: str) -> Query:
-        return cls.q().join(FileNode).filter(FileNode.path.startswith(path), Node.active==True)
+        subq = FileNode.query_by_dir(path).subquery()
+        return cls.q().join(subq, Node.storage_id == subq.c.storage_id).filter(Node.active == True)
 
     @classmethod
     def get_sorted_nodes(cls, size=0) -> List['Node']:
@@ -321,6 +336,17 @@ class Directory(Base):
     @classmethod
     def exist(cls, path: str) -> bool:
         return cls.q().filter(cls.path == path).count() != 0
+
+    @classmethod
+    def query_by_dir(cls, path: str, q: Query = None) -> Query:
+        if q is None:
+            q = cls.q()
+        format_path = path.replace('/', '\\/')
+        if format_path[-3:] != '\\/':
+            format_path += '\\/'
+        return q.filter(cls.path.op('~')(f'({path}[A-z]+)'))
+
+
 
     @classmethod
     def delete(cls, path: str) -> None:

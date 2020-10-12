@@ -49,12 +49,21 @@ class FileModel(BaseFileModel):
         orm_mode = True
 
 
+class SimpleFileModel(BaseModel):
+    path: str
+
+    class Config:
+        orm_mode = True
+
+
 class DirectoryModel(BaseFileModel):
 
-    files: List[FileModel]
+    files: List[SimpleFileModel]
 
     def _files(self):
         return [os.path.dirname(file.path) for file in self.files]
+
+
 
 
 

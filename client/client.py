@@ -66,9 +66,9 @@ def storage_error_handler(func):
 def post_storage(url, data, headers):
     try:
         x = requests.post(url, data=data, headers=headers)
-        try:
+        if x.ok:
             return x.content, x.status_code
-        except ValueError:
+        else:
             return None, CODE_CORRUPTED_RESPONSE
     except requests.exceptions.ConnectionError:
         return None, CODE_CONNECTION_ERROR

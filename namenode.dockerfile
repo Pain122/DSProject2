@@ -12,5 +12,5 @@ RUN rm -rf venv && \
     venv/bin/pip install --upgrade setuptools pip && \
     venv/bin/pip install -r requirements.txt
 
-
+RUN chmod 777 ./boot_namenode.sh
 ENTRYPOINT ["./boot_namenode.sh"]

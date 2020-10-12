@@ -13,5 +13,5 @@ RUN rm -rf venv && \
     venv/bin/pip install --upgrade setuptools pip && \
     venv/bin/pip install -r requirements.txt
 
-
+RUN chmod 777 ./boot_storage_node.sh
 ENTRYPOINT ["./boot_storage_node.sh"]

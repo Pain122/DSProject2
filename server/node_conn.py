@@ -8,7 +8,7 @@ def post(uri, **data) -> Any:
     url = join(NAME_NODE_ADDRESS, uri)
     logger.info(data)
     try:
-        x = r.post(url, **data)
+        x = r.post(url, **data, timeout=1)
         logger.info(x.content)
     except r.exceptions.Timeout:
         pass

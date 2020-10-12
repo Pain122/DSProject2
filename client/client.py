@@ -43,7 +43,7 @@ def storage_error_handler(func):
     def wrapper(*args):
         metadata = args[1]
         cmd, address, data = metadata['cmd'], metadata['address'], metadata['file_data']
-        url = posixpath.join(address, cmd)
+        url = posixpath.join(f'http://{address}', cmd)
         response, code = post_storage(url, data=data, headers={'Content-Type': data.content_type})
         if response_failed(code):
             return fetch_error_msg(code)
@@ -77,10 +77,10 @@ def post(uri, data, model):
     try:
         url = posixpath.join(NAME_NODE_ADDRESS, uri)
         x = requests.post(url, json=data)
-        print(x.content)
-        print(model)
+        if not x.status_code.ok:
+            return None, x.status_code
         try:
-            x_data = dict(model.parse_raw(x.content))
+            x_data = model.parse_raw(x.content).dict()
             return x_data, x.status_code
         except ValidationError:
             return None, CODE_CORRUPTED_RESPONSE
@@ -137,8 +137,8 @@ class Client:
     def dfs_file_download(self, data):
         file = data['file']
         node_address = data['node_data']['address']
-        filename = data['file_metadata']['path']
-        with open(posixpath.basename(filename), 'w') as out:
+        filename = data['file_metadata']['file_data'].fields['path']
+        with open(posixpath.basename(filename), 'wb') as out:
             out.write(file)
         return f'File \'{filename}\' has been successfully downloaded from node at {node_address}!'
 
@@ -156,9 +156,11 @@ class Client:
         storages = [storage['storage_ip'] for storage in response['storages']]
         metadata = {
             'cmd': 'send',
-            'file_data': {
-                'path': response['path']
-            },
+            'file_data': MultipartEncoder(
+                fields={
+                    'path': response['path']
+                }
+            ),
             'address': storages[0]
         }
         return self.dfs_file_download(metadata)

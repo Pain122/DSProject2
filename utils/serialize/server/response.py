@@ -14,12 +14,13 @@ class FileReport(BaseModel):
     storage_id: str
     path: str
 
-    def __init__(self, ok: bool, path: str, storage_id: str):
+    @classmethod
+    def init(cls, ok: bool, path: str, storage_id: str):
         if ok:
             status = Status.default()
         else:
             status = Status(status='error')
 
-        super().__init__(status=status, path=path, storage_id=storage_id)
+        return cls(status=status, path=path, storage_id=storage_id)
 
 

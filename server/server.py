@@ -8,6 +8,16 @@ from pydantic.error_wrappers import ValidationError
 from config import *
 from server.exceptions import DirDoesNotExist
 from utils.serialize.server import *
+import uvicorn
+import socket
+from contextlib import closing
+
+
+def find_free_port():
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+        s.bind(('', 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
 
 
 def post(ip, uri, data, model, js=True):
@@ -40,7 +50,8 @@ class Server:
         self.connect_to_server()
 
     def connect_to_server(self):
-        data = AddNodeRequest(available_storage=psutil.disk_usage('/').free)
+        data = AddNodeRequest(available_storage=psutil.disk_usage('/').free, port=find_free_port())
+        self.port = data.port
         resp, code = post(NAME_NODE_ADDRESS, 'new_node', data.dict(), AddNodeResponse)
         if code == 200:
             self.id = resp.storage_id

@@ -12,10 +12,13 @@ from utils.serialize.server.response import Status, FileReport
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 import requests
 from .dbconn import *
+from .node_conn import post
+import shutil
+import asyncio
 
 
 def check_file(path: str, file_path: str, folder_path: str):
-    if query_file(path):
+    if not query_file(path):
         rm_file_folders(file_path, folder_path)
 
 
@@ -31,10 +34,15 @@ def create(file_path: str, folder_path: str, file: UploadFile):
             f.close()
 
 
-def report(file_path: str):
-    if not DEBUG:
-        rep = FileReport(True, file_path, srv.id)
-        requests.post('http://' + NAME_NODE_ADDRESS + '/report', rep)
+async def report(file_path: str):
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, sync_report, file_path)
+
+
+def sync_report(file_path: str):
+    rep = FileReport.init(True, file_path, srv.id)
+    logger.info(rep.dict())
+    post('report', json=rep.dict())
 
 
 def replica(file_path: str, path: str, storage_ips: str):
@@ -51,11 +59,6 @@ def replica(file_path: str, path: str, storage_ips: str):
             headers={'Content-Type': mp_encoder.content_type}
         )
     return True
-
-
-def iterate_path(path: str):
-    working_length = len(WORKING_DIR.split(os.path.sep))
-    return os.path.join(WORKING_DIR, *path.split(os.path.sep)[working_length:-1])
 
 
 def make_file_path(path: str):
@@ -75,14 +78,12 @@ def rm_file_folders(fl_path: str, fd_path: str):
     os.remove(fl_path)
     fold_path = fd_path
 
-    while (fold_path != WORKING_DIR) and (len(os.listdir(fold_path)) == 0):
-        os.rmdir(fold_path)
-        fold_path = iterate_path(fold_path)
-
-
-def check_req(data):
-    if data is None:
-        raise BadRequest()
+    while not os.path.samefile(fold_path, WORKING_DIR):
+        try:
+            os.rmdir(fold_path)
+        except OSError:
+            break
+        fold_path = os.path.dirname(fold_path)
 
 
 srv = Server(NAME_NODE_ADDRESS)
@@ -98,23 +99,39 @@ async def ping():
     return Status.default()
 
 
+@app.get('/init')
+async def init():
+    for filename in os.listdir(WORKING_DIR):
+        file_path = os.path.join(WORKING_DIR, filename)
+        logger.info(file_path)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            raise IntegrityError()
+    return Status.default()
+
+
 @app.post('/create')
 async def create_file(path: str = Form(...), file: UploadFile = FileForm(...)):
     file_path = make_file_path(path)
     folder_path = make_dirs_path(path)
-
+    logger.info(file_path)
+    logger.info(folder_path)
     if not os.path.isfile(file_path):
-
         create(file_path, folder_path, file)
-        report(file_path)
-
+        logger.info('sus')
+        await report(path)
+        logger.info('sos')
         if check_file(path, file_path, folder_path):
             storages = query_storage(srv.id, path)
             replica(file_path, path, storages)
-
+        logger.info('sas')
         return Status.default()
     else:
-        raise IntegrityError
+        raise IntegrityError()
 
 
 @app.post('/create_replica')
@@ -125,9 +142,9 @@ async def create_replica(path: str = Form(...), file: UploadFile = FileForm(...)
     if not os.path.isfile(file_path):
 
         create(file_path, folder_path, file)
-        report(file_path)
+        await report(path)
 
-        if query_file(path):
+        if not query_file(path):
             rm_file_folders(file_path, folder_path)
 
         check_file(path, file_path, folder_path)
@@ -182,7 +199,7 @@ async def move(path: frmf('MoveModel', new_path=True)):
 
 
 @app.post('/send')
-async def send(path: str):
+async def send(path: str = Form(...)):
     file_path = make_file_path(path)
     if os.path.isfile(file_path):
         return FileResponse(file_path)

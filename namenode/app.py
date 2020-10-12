@@ -74,6 +74,11 @@ async def add_new_node(node: AddNodeRequest, request: Request):
     return AddNodeResponse(storage_id=storage_id)
 
 
+@app.get('/db_ping')
+async def ping():
+    return os.system("ping -c 1 " + DB_ADDR)
+
+
 @app.post('/dfs_file_create', response_model=FileModel)
 async def file_create(file: frmf('FileCreateRequest')):
     ping_n_repl()

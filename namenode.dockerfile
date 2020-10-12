@@ -12,8 +12,5 @@ RUN rm -rf venv && \
     venv/bin/pip install --upgrade setuptools pip && \
     venv/bin/pip install -r requirements.txt
 
-ENV DB_ADDR db:5432
-ENV DB_LOGIN nikitasmirnov
-ENV DB_PASS yanikitasmirnov
-ENV DB_NAME test
+
 ENTRYPOINT ["./boot_namenode.sh"]

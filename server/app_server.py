@@ -43,12 +43,14 @@ async def report(file_path: str):
 
 
 def sync_report(file_path: str):
+    logger.info('Sending report')
     rep = FileReport.init(True, file_path, srv.id)
     logger.info(rep.dict())
     post('report', json=rep.dict())
 
 
 def replica(file_path: str, path: str, storage_ips: str):
+    logger.info('Replicating file')
     mp_encoder = MultipartEncoder(
         fields={
             'path': path,
@@ -56,6 +58,7 @@ def replica(file_path: str, path: str, storage_ips: str):
         }
     )
     for storage_ip in storage_ips:
+        logger.info(f'Sending files to addr {storage_ip}')
         try:
             requests.post(
                 'http://' + storage_ip + '/create_replica',
@@ -196,6 +199,7 @@ async def move(path: frmf('MoveModel', new_path=True)):
 
 @app.post('/send')
 async def send(path: str = Form(...)):
+    logger.info('File send')
     file_path = make_file_path(path)
     if os.path.isfile(file_path):
         return FileResponse(file_path)

@@ -3,9 +3,10 @@ import posixpath
 from pydantic.error_wrappers import ValidationError
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from utils.serialize.general import *
+from utils.serialize.namenode import *
 from config import *
 cmd_model_map = {
-    'dfs_init': StorageModel,
+    'dfs_init': InitResponse,
     'dfs_file_create': FileModel,
     'dfs_file_read': FileModel,
     'dfs_file_write': FileModel,
@@ -42,7 +43,7 @@ def storage_error_handler(func):
     def wrapper(*args):
         metadata = args[1]
         cmd, address, data = metadata['cmd'], metadata['address'], metadata['file_data']
-        url = posixpath.join(address, cmd)
+        url = posixpath.join(f'http://{address}', cmd)
         response, code = post_storage(url, data=data, headers={'Content-Type': data.content_type})
         if response_failed(code):
             return fetch_error_msg(code)
@@ -76,8 +77,10 @@ def post(uri, data, model):
     try:
         url = posixpath.join(NAME_NODE_ADDRESS, uri)
         x = requests.post(url, json=data)
+        if not x.status_code.ok:
+            return None, x.status_code
         try:
-            x_data = dict(model.parse_raw(x.content))
+            x_data = model.parse_raw(x.content).dict()
             return x_data, x.status_code
         except ValidationError:
             return None, CODE_CORRUPTED_RESPONSE
@@ -116,9 +119,9 @@ class Client:
         response = data['response']
         size = response['size']
         return f'Available size: {size} bytes' \
-               f' or {size / 1024} kilobytes or' \
-               f' {size / 1024 / 1024} megabytes or' \
-               f' {size / 1024 / 1024 / 1024} gigabytes.'
+               f' or {size // 1024} kilobytes or' \
+               f' {size // 1024 // 1024} megabytes or' \
+               f' {size // 1024 // 1024 // 1024} gigabytes.'
 
     @name_error_handler
     def dfs_file_create(self, data):
@@ -134,8 +137,8 @@ class Client:
     def dfs_file_download(self, data):
         file = data['file']
         node_address = data['node_data']['address']
-        filename = data['file_metadata']['path']
-        with open(posixpath.basename(filename), 'w') as out:
+        filename = data['file_metadata']['file_data'].fields['path']
+        with open(posixpath.basename(filename), 'wb') as out:
             out.write(file)
         return f'File \'{filename}\' has been successfully downloaded from node at {node_address}!'
 
@@ -153,9 +156,11 @@ class Client:
         storages = [storage['storage_ip'] for storage in response['storages']]
         metadata = {
             'cmd': 'send',
-            'file_data': {
-                'path': response['path']
-            },
+            'file_data': MultipartEncoder(
+                fields={
+                    'path': response['path']
+                }
+            ),
             'address': storages[0]
         }
         return self.dfs_file_download(metadata)

@@ -1,6 +1,6 @@
 from pydantic import BaseModel, conlist
 from typing import List, Type, Any, Optional
-from os import path
+import os
 from uuid import uuid4, UUID
 
 
@@ -54,7 +54,7 @@ class DirectoryModel(BaseFileModel):
     files: List[FileModel]
 
     def _files(self):
-        return [path.dirname(file.path) for file in self.files]
+        return [os.path.dirname(file.path) for file in self.files]
 
 
 

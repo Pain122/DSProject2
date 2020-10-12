@@ -4,6 +4,7 @@ from typing import List, Optional
 
 class AddNodeRequest(BaseModel):
     available_storage: int
+    port: int
 
 
 class DirectoryRequestModel(BaseModel):

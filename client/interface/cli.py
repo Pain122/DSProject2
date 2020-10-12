@@ -1,11 +1,7 @@
 import click
 import posixpath
 import os
-
-import requests
-from requests_toolbelt import MultipartEncoder
-
-from client.client import client, Client
+from client.client import client
 
 def get_cwd():
     with open('cwd.txt', 'r') as cwd:
@@ -18,13 +14,11 @@ def format_filename(filename):
     return path
 
 
-@click.group(invoke_without_command=True)
+@click.group()
 @click.pass_context
 def dfs(ctx):
     """ Root command for distributed file system CLI """
-    if ctx.invoked_subcommand is None:
-        click.echo('Invoked \'dfs\'!')
-
+    pass
 
 @dfs.command(name='init')
 def dfs_init():
@@ -45,12 +39,10 @@ def dfs_init():
     click.echo(msg)
 
 
-@dfs.group(name='file', invoke_without_command=True)
+@dfs.group(name='file')
 @click.pass_context
 def dfs_file(ctx):
-    if ctx.invoked_subcommand is None:
-        click.echo('Invoked \'dfs file\'!')
-
+    pass
 
 @dfs_file.command(name='create')
 @click.argument('filename', type=click.Path())
@@ -208,12 +200,10 @@ def dfs_file_move(filename, dest):
     click.echo(msg)
 
 
-@dfs.group(name='dir', invoke_without_command=True)
+@dfs.group(name='dir')
 @click.pass_context
 def dfs_dir(ctx):
-    if ctx.invoked_subcommand is None:
-        click.echo('Invoked \'dfs dir\'!')
-
+    pass
 
 @dfs_dir.command(name='open')
 @click.argument('name', type=click.Path())
@@ -301,8 +291,6 @@ def dfs_dir_delete(name):
         'payload': data,
         'console_data': data
     }
-    # if directory contains files
-    click.confirm('The directory contains some files. Are you sure you want to delete them?', abort=True)
     msg = client.dfs_dir_delete(metadata)
     click.echo(msg)
 

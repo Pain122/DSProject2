@@ -136,4 +136,5 @@ https://github.com/Pain122/DSProject2
 
 ## Link to Docker Hub images
 
-https://hub.docker.com/sas
+https://hub.docker.com/r/nikololiahim/namenode
+https://hub.docker.com/r/nikololiahim/storage

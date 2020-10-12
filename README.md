@@ -21,7 +21,7 @@ The problem of data storage was topical, since the creation of computers. The qu
 To run the client, the user should clone the repository. You should install the requirements: 
 
 ```bash
-pip install -r requierments.txt
+pip install -r requirements.txt
 ```
 
 Next, you should install command line interface, using pip:

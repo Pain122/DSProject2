@@ -169,6 +169,8 @@ async def make_directory(dir: DirectoryRequestModel):
     ping_n_repl()
     if Directory.exist(dir.path):
         raise NoSuchDirectory()
+    if File.exists(dir.path):
+        raise FileExists()
     Directory.create(dir.path)
     resp = DirectoryModel(storages=[], files=[], path=dir.path)
     return resp

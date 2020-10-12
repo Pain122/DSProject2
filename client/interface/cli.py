@@ -313,4 +313,4 @@ def cwd():
 
 
 if __name__ == '__main__':
-    pass
+    print(os.getenv("NAMENODE_ADDR"))

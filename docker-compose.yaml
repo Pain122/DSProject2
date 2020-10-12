@@ -5,7 +5,7 @@ services:
     container_name: namenode
     restart: on-failure
     environment:
-      DB_ADDR: db
+      DB_ADDR: 127.0.0.1
       DB_LOGIN: nikitasmirnov
       DB_PASS: yanikitasmirnov
       DB_NAME: test
@@ -13,14 +13,15 @@ services:
     build:
       context: .
       dockerfile: namenode.dockerfile
-    ports:
-      - "8000:8000"
+#    ports:
+#      - "8000:8000"
     depends_on:
       - db
+    network_mode: "host"
   storage:
     container_name: storage
     environment:
-      NAMENODE_ADDR: http://namenode:8000
+      NAMENODE_ADDR: http://127.0.0.1:8000
       WORKING_DIR: /var/storage
       DB_ADDR: 127.0.0.1
       DB_LOGIN: nikitasmirnov
@@ -34,9 +35,10 @@ services:
     - /var/storage:/var/storage
     depends_on:
       - namenode
-    expose:
-      - "1000-65536"
+#    ports:
+#      - "8001:8001"
     restart: on-failure
+    network_mode: "host"
   db:
     container_name: db
     environment:
@@ -48,5 +50,6 @@ services:
       - type: bind
         source: ./postgres/pg_hba.conf
         target: /var/lib/postgresql/data/pg_hba.conf
-    ports:
-      - "5432:5432"
+#    ports:
+#      - "5432:5432"
+    network_mode: "host"

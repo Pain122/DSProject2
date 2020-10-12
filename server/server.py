@@ -50,7 +50,7 @@ class Server:
         self.connect_to_server()
 
     def connect_to_server(self):
-        data = AddNodeRequest(available_storage=psutil.disk_usage('/').free, port=find_free_port())
+        data = AddNodeRequest(available_storage=psutil.disk_usage('/').free, port=8001)
         self.port = data.port
         resp, code = post(NAME_NODE_ADDRESS, 'new_node', data.dict(), AddNodeResponse)
         if code == 200:

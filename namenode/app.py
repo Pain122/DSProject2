@@ -19,6 +19,9 @@ Base.metadata.create_all()
 if not Directory.exist('/'):
     Directory.create('/')
 
+Node.q().delete(synchronize_session='fetch')
+session.commit()
+
 origins = [
     "http://localhost*",
     "http://localhost:8080*"

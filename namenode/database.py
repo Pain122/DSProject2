@@ -53,10 +53,9 @@ class FileNode(Base):
     def query_by_dir(cls, path: str, q: Query = None) -> Query:
         if q is None:
             q = cls.q()
-        format_path = path.replace('/', '\\/')
-        if format_path[-3:] != '\\/':
-            format_path += '\\/'
-        return q.filter(cls.path.op('~')(f'({path}[A-z]+)'))
+        if path[-1] != '/':
+            path += '/'
+        return q.filter(cls.path.op('SIMILAR TO')(f'({path})\\w+'))
 
 
 class PendingFileNode(Base):
@@ -179,10 +178,9 @@ class File(Base):
     def query_by_dir(cls, path: str, q: Query = None) -> Query:
         if q is None:
             q = cls.q()
-        format_path = path.replace('/', '\\/')
-        if format_path[-3:] != '\\/':
-            format_path += '\\/'
-        return q.filter(cls.path.op('~')(f'({path}[A-z]+)'))
+        if path[-1] != '/':
+            path += '/'
+        return q.filter(cls.path.op('SIMILAR TO')(f'({path})\\w+'))
 
     @classmethod
     def append_storages(cls, path: str, storage_ids: List[str] or str) -> None:
@@ -342,10 +340,9 @@ class Directory(Base):
     def query_by_dir(cls, path: str, q: Query = None) -> Query:
         if q is None:
             q = cls.q()
-        format_path = path.replace('/', '\\/')
-        if format_path[-3:] != '\\/':
-            format_path += '\\/'
-        return q.filter(cls.path.op('~')(f'({path}[A-z]+)'))
+        if path[-1] != '/':
+            path += '/'
+        return q.filter(cls.path.op('SIMILAR TO')(f'({path})\\w+'))
 
     @classmethod
     def delete(cls, path: str) -> None:
